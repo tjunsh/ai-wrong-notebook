@@ -5,7 +5,6 @@ import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/app/router.dart';
 import 'package:smart_wrong_notebook/src/app/theme/app_theme.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
-import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 
@@ -17,7 +16,6 @@ class SmartWrongNotebookApp extends StatelessWidget {
     final GoRouter router = buildRouter();
     return ProviderScope(
       overrides: [
-        questionRepositoryProvider.overrideWithValue(InMemoryQuestionRepository()),
         settingsRepositoryProvider.overrideWithValue(InMemorySettingsRepository()),
         aiAnalysisServiceProvider.overrideWithValue(AiAnalysisService.fake()),
         imageStorageServiceProvider.overrideWithValue(ImageStorageService()),
