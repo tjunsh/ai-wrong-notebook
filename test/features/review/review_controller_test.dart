@@ -4,6 +4,7 @@ import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
+import 'package:smart_wrong_notebook/src/domain/repositories/review_log_repository.dart';
 import 'package:smart_wrong_notebook/src/features/review/presentation/review_controller.dart';
 
 QuestionRecord _makeQuestion(String id, {MasteryLevel mastery = MasteryLevel.newQuestion, int reviewCount = 0}) {
@@ -28,11 +29,13 @@ QuestionRecord _makeQuestion(String id, {MasteryLevel mastery = MasteryLevel.new
 
 void main() {
   late InMemoryQuestionRepository repo;
+  late InMemoryReviewLogRepository logRepo;
   late ReviewController controller;
 
   setUp(() {
     repo = InMemoryQuestionRepository();
-    controller = ReviewController(repository: repo);
+    logRepo = InMemoryReviewLogRepository();
+    controller = ReviewController(repository: repo, logRepository: logRepo);
   });
 
   test('markMastered updates mastery and increments reviewCount', () async {
@@ -101,5 +104,48 @@ void main() {
 
     final due = await controller.getDueQuestions();
     expect(due.where((q) => q.id == 'q-1'), isEmpty);
+  });
+
+  // --- ReviewLog persistence tests ---
+
+  test('markMastered writes a review log', () async {
+    await repo.saveDraft(_makeQuestion('q-1'));
+    await controller.markMastered('q-1');
+
+    final logs = await logRepo.getByQuestionId('q-1');
+    expect(logs.length, 1);
+    expect(logs.first.result, 'mastered');
+    expect(logs.first.masteryAfter, MasteryLevel.mastered);
+    expect(logs.first.questionRecordId, 'q-1');
+  });
+
+  test('markReviewing writes a review log', () async {
+    await repo.saveDraft(_makeQuestion('q-1'));
+    await controller.markReviewing('q-1');
+
+    final logs = await logRepo.getByQuestionId('q-1');
+    expect(logs.length, 1);
+    expect(logs.first.result, 'reviewing');
+    expect(logs.first.masteryAfter, MasteryLevel.reviewing);
+  });
+
+  test('multiple reviews create multiple logs in order', () async {
+    await repo.saveDraft(_makeQuestion('q-1'));
+    await controller.markReviewing('q-1');
+    await controller.markMastered('q-1');
+
+    final logs = await logRepo.getByQuestionId('q-1');
+    expect(logs.length, 2);
+    expect(logs.first.result, 'reviewing');
+    expect(logs.last.result, 'mastered');
+  });
+
+  test('controller without logRepository does not throw', () async {
+    final noLogController = ReviewController(repository: repo);
+    await repo.saveDraft(_makeQuestion('q-1'));
+    final result = await noLogController.markMastered('q-1');
+
+    expect(result.masteryLevel, MasteryLevel.mastered);
+    expect(await logRepo.listAll(), isEmpty);
   });
 }
