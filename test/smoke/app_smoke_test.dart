@@ -11,4 +11,12 @@ void main() {
     expect(find.text('复习'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);
   });
+
+  testWidgets('app boots to home screen with default content', (tester) async {
+    await tester.pumpWidget(const SmartWrongNotebookApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('开始拍错题'), findsOneWidget);
+    expect(find.text('最近新增'), findsOneWidget);
+  });
 }
