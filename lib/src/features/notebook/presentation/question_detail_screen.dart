@@ -97,7 +97,7 @@ class QuestionDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _markReviewed(BuildContext context, WidgetRef ref, QuestionRecord question) {
+  void _markReviewed(BuildContext context, WidgetRef ref, QuestionRecord question) async {
     final nextLevel = question.masteryLevel == MasteryLevel.newQuestion
         ? MasteryLevel.reviewing
         : MasteryLevel.mastered;
@@ -105,8 +105,11 @@ class QuestionDetailScreen extends ConsumerWidget {
       masteryLevel: nextLevel,
       reviewCount: question.reviewCount + 1,
     );
+    await ref.read(questionRepositoryProvider).update(updated);
+    invalidateQuestionList(ref);
     ref.read(currentQuestionProvider.notifier).state = updated;
 
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('已标记为${nextLevel == MasteryLevel.mastered ? '已掌握' : '复习中'}')),
     );
