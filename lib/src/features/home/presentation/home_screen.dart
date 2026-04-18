@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/features/capture/presentation/capture_entry_sheet.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -16,8 +17,14 @@ class HomeScreen extends StatelessWidget {
             showModalBottomSheet<void>(
               context: context,
               builder: (_) => CaptureEntrySheet(
-                onCameraTap: () {},
-                onGalleryTap: () {},
+                onCameraTap: () {
+                  Navigator.pop(context);
+                  context.go('/capture/correction');
+                },
+                onGalleryTap: () {
+                  Navigator.pop(context);
+                  context.go('/capture/correction');
+                },
               ),
             );
           },

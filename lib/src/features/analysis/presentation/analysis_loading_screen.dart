@@ -1,7 +1,25 @@
 import 'package:flutter/material.dart';
 
-class AnalysisLoadingScreen extends StatelessWidget {
+class AnalysisLoadingScreen extends StatefulWidget {
   const AnalysisLoadingScreen({super.key});
+
+  @override
+  State<AnalysisLoadingScreen> createState() => _AnalysisLoadingScreenState();
+}
+
+class _AnalysisLoadingScreenState extends State<AnalysisLoadingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _simulateAnalysis();
+  }
+
+  Future<void> _simulateAnalysis() async {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/analysis/result');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

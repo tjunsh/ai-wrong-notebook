@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class OcrConfirmationScreen extends StatelessWidget {
   const OcrConfirmationScreen({super.key, required this.initialText});
@@ -38,7 +39,10 @@ class OcrConfirmationScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(onPressed: null, child: const Text('开始 AI 解析')),
+            FilledButton(
+              onPressed: () => context.go('/analysis/loading'),
+              child: const Text('开始 AI 解析'),
+            ),
           ],
         ),
       ),

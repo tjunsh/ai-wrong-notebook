@@ -23,6 +23,11 @@ class QuestionDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text('错因：${record.analysisResult!.mistakeReason}'),
           ],
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pushNamed('/analysis/result'),
+            child: const Text('开始 AI 解析'),
+          ),
         ],
       ),
     );

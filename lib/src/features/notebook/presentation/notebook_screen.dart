@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class NotebookScreen extends StatelessWidget {
   const NotebookScreen({super.key});
@@ -13,7 +14,19 @@ class NotebookScreen extends StatelessWidget {
           IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
         ],
       ),
-      body: const Center(child: Text('错题本列表（按学科/掌握状态筛选）')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text('错题本列表（按学科/掌握状态筛选）'),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: () => context.go('/capture/correction'),
+              child: const Text('+ 添加错题'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
