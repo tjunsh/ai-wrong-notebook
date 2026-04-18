@@ -9,16 +9,19 @@ import 'package:smart_wrong_notebook/src/features/notebook/presentation/notebook
 import 'package:smart_wrong_notebook/src/features/review/presentation/review_screen.dart';
 import 'package:smart_wrong_notebook/src/features/home/presentation/home_screen.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 
 final _inMemRepo = InMemoryQuestionRepository();
+final _inMemSettings = InMemorySettingsRepository();
 
 final _repoOverride = questionRepositoryProvider.overrideWithValue(_inMemRepo);
+final _settingsOverride = settingsRepositoryProvider.overrideWithValue(_inMemSettings);
 
 void main() {
   group('MVP smoke tests', () {
     testWidgets('app boots to shell with Home tab label', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: const SmartWrongNotebookApp(),
       ));
       await tester.pumpAndSettle();
@@ -31,7 +34,7 @@ void main() {
 
     testWidgets('app boots to home screen with default content', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: const SmartWrongNotebookApp(),
       ));
       await tester.pumpAndSettle();
@@ -42,7 +45,7 @@ void main() {
 
     testWidgets('user can tap camera button and see capture sheet', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: const MaterialApp(home: HomeScreen()),
       ));
       await tester.pumpAndSettle();
@@ -56,7 +59,7 @@ void main() {
 
     testWidgets('settings screen shows all required entries', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: const MaterialApp(home: Scaffold(body: SettingsScreen())),
       ));
       await tester.pumpAndSettle();
@@ -69,7 +72,7 @@ void main() {
 
     testWidgets('notebook screen shows filter icons', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: const MaterialApp(home: Scaffold(body: NotebookScreen())),
       ));
       await tester.pumpAndSettle();
@@ -80,7 +83,7 @@ void main() {
 
     testWidgets('review screen shows today review section', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: const MaterialApp(home: ReviewScreen()),
       ));
       await tester.pumpAndSettle();
@@ -90,7 +93,7 @@ void main() {
 
     testWidgets('capture entry sheet has camera and gallery options', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [_repoOverride],
+        overrides: [_repoOverride, _settingsOverride],
         child: MaterialApp(
           home: Scaffold(body: CaptureEntrySheet()),
         ),

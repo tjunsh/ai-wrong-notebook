@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/drift_question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/drift_settings_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 import 'package:smart_wrong_notebook/src/data/services/capture_service.dart';
@@ -17,7 +18,7 @@ final Provider<QuestionRepository> questionRepositoryProvider = Provider<Questio
 });
 
 final Provider<SettingsRepository> settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
-  return InMemorySettingsRepository();
+  return DriftSettingsRepository();
 });
 
 // --- Service providers ---
