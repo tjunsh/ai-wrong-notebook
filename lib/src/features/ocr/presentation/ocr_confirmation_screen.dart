@@ -15,7 +15,7 @@ class OcrConfirmationScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             DropdownButtonFormField<String>(
-              value: '数学',
+              initialValue: '数学',
               items: const <DropdownMenuItem<String>>[
                 DropdownMenuItem(value: '语文', child: Text('语文')),
                 DropdownMenuItem(value: '数学', child: Text('数学')),

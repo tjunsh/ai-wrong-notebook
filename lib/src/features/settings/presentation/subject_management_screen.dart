@@ -5,9 +5,9 @@ class SubjectManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('科目管理')),
-      body: Center(child: Text('内置科目 + 自定义科目')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('科目管理')),
+      body: Center(child: const Text('内置科目 + 自定义科目')),
     );
   }
 }

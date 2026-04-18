@@ -5,9 +5,9 @@ class DataManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('数据管理')),
-      body: Center(child: Text('导出当前题库')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('数据管理')),
+      body: Center(child: const Text('导出当前题库')),
     );
   }
 }

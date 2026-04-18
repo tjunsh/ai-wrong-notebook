@@ -3,12 +3,12 @@
 
 // Placeholder - will be fully implemented after Drift code generation
 import 'dart:convert';
-import '../../domain/models/question_record.dart' as domain;
-import '../../domain/models/subject.dart' as domain;
-import '../../domain/models/content_status.dart' as domain;
-import '../../domain/models/mastery_level.dart' as domain;
-import '../../domain/models/analysis_result.dart' as domain;
-import '../../domain/models/generated_exercise.dart' as domain;
+import 'package:smart_wrong_notebook/src/domain/models/question_record.dart' as domain;
+import 'package:smart_wrong_notebook/src/domain/models/subject.dart' as domain;
+import 'package:smart_wrong_notebook/src/domain/models/content_status.dart' as domain;
+import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart' as domain;
+import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart' as domain;
+import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart' as domain;
 
 // ignore: unused_element
 domain.AnalysisResult parseAnalysisJson(String json) {

@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:smart_wrong_notebook/src/features/capture/application/correction_state.dart';
 
 class ImageCorrectionService {

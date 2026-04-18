@@ -5,9 +5,9 @@ class PromptSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('提示词设置')),
-      body: Center(child: Text('分析题目 / 举一反三')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('提示词设置')),
+      body: Center(child: const Text('分析题目 / 举一反三')),
     );
   }
 }

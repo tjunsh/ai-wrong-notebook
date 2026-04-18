@@ -1,5 +1,4 @@
 import 'package:smart_wrong_notebook/src/domain/models/review_log.dart';
-import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 
 abstract class ReviewRepository {
   Future<void> logReview(ReviewLog log);
