@@ -1,14 +1,22 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smart_wrong_notebook/src/app/providers.dart';
 
-class QuestionCorrectionScreen extends StatelessWidget {
+class QuestionCorrectionScreen extends ConsumerWidget {
   const QuestionCorrectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(currentQuestionProvider);
+    final imagePath = current?.imagePath;
+
     return Scaffold(
       appBar: AppBar(title: const Text('校正与框选')),
-      body: const Center(child: Text('图片校正区')),
+      body: imagePath != null && File(imagePath).existsSync()
+          ? Center(child: Image.file(File(imagePath), fit: BoxFit.contain))
+          : const Center(child: Text('未选择图片')),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

@@ -3,6 +3,7 @@ import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
+import 'package:smart_wrong_notebook/src/data/services/capture_service.dart';
 import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
@@ -25,6 +26,10 @@ final Provider<AiAnalysisService> aiAnalysisServiceProvider = Provider<AiAnalysi
 
 final Provider<ImageStorageService> imageStorageServiceProvider = Provider<ImageStorageService>((ref) {
   return ImageStorageService();
+});
+
+final Provider<CaptureService> captureServiceProvider = Provider<CaptureService>((ref) {
+  return CaptureService(storage: ref.read(imageStorageServiceProvider));
 });
 
 // --- Current question flow ---

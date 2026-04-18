@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/features/capture/presentation/capture_entry_sheet.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
-import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,7 +19,10 @@ class HomeScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: () {
-            _startCapture(context, ref);
+            showModalBottomSheet<void>(
+              context: context,
+              builder: (_) => const CaptureEntrySheet(),
+            );
           },
           icon: const Icon(Icons.camera_alt_outlined),
           label: const Text('拍照录题'),
@@ -34,29 +36,6 @@ class HomeScreen extends ConsumerWidget {
           error: (e, _) => Text('加载失败: $e'),
         ),
       ],
-    );
-  }
-
-  void _startCapture(BuildContext context, WidgetRef ref) {
-    final record = QuestionRecord.draft(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      imagePath: '/tmp/capture.jpg',
-      subject: Subject.math,
-      recognizedText: '1+1=?',
-    );
-    ref.read(currentQuestionProvider.notifier).state = record;
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => CaptureEntrySheet(
-        onCameraTap: () {
-          Navigator.pop(context);
-          context.go('/capture/correction');
-        },
-        onGalleryTap: () {
-          Navigator.pop(context);
-          context.go('/capture/correction');
-        },
-      ),
     );
   }
 

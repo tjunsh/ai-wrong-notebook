@@ -79,11 +79,10 @@ void main() {
     });
 
     testWidgets('capture entry sheet has camera and gallery options', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: CaptureEntrySheet(
-            onCameraTap: () {},
-            onGalleryTap: () {},
+      await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CaptureEntrySheet(),
           ),
         ),
       ));

@@ -18,6 +18,7 @@ dependencies:
   json_annotation: ^4.9.0
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.4
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
