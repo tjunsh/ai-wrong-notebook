@@ -65,6 +65,11 @@ class QuestionRecord {
     String? correctedText,
     ContentStatus? contentStatus,
     AnalysisResult? analysisResult,
+    MasteryLevel? masteryLevel,
+    int? reviewCount,
+    DateTime? lastReviewedAt,
+    List<String>? tags,
+    bool? isFavorite,
   }) {
     return QuestionRecord(
       id: id,
@@ -72,14 +77,14 @@ class QuestionRecord {
       subject: subject,
       recognizedText: recognizedText,
       correctedText: correctedText ?? this.correctedText,
-      tags: tags,
+      tags: tags ?? this.tags,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
-      lastReviewedAt: lastReviewedAt,
-      reviewCount: reviewCount,
-      isFavorite: isFavorite,
+      lastReviewedAt: lastReviewedAt ?? this.lastReviewedAt,
+      reviewCount: reviewCount ?? this.reviewCount,
+      isFavorite: isFavorite ?? this.isFavorite,
       contentStatus: contentStatus ?? this.contentStatus,
-      masteryLevel: masteryLevel,
+      masteryLevel: masteryLevel ?? this.masteryLevel,
       analysisResult: analysisResult ?? this.analysisResult,
     );
   }
