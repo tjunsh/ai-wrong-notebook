@@ -9,7 +9,9 @@ import 'package:smart_wrong_notebook/src/data/repositories/drift_settings_reposi
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     if (kDebugMode) debugPrint('FlutterError: ${details.exception}');
@@ -20,20 +22,26 @@ void main() {
     return true;
   };
 
-  final settingsRepo = DriftSettingsRepository();
-  final router = buildRouter(settingsRepo);
+  try {
+    final settingsRepo = DriftSettingsRepository();
+    final router = buildRouter(settingsRepo);
 
-  runZonedGuarded(
-    () => runApp(ProviderScope(
+    runApp(ProviderScope(
       overrides: [
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         aiAnalysisServiceProvider.overrideWithValue(AiAnalysisService.fake()),
         imageStorageServiceProvider.overrideWithValue(ImageStorageService()),
       ],
       child: SmartWrongNotebookApp(routerConfig: router),
-    )),
-    (error, stack) {
-      if (kDebugMode) debugPrint('UncaughtError: $error\n$stack');
-    },
-  );
+    ));
+  } catch (e, stack) {
+    if (kDebugMode) debugPrint('InitializationError: $e\n$stack');
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('初始化失败: $e'),
+        ),
+      ),
+    ));
+  }
 }
