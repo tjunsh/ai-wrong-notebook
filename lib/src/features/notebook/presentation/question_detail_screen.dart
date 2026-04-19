@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -42,6 +43,20 @@ class QuestionDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: <Widget>[
+          if (File(current.imagePath).existsSync())
+            GestureDetector(
+              onTap: () => _showFullScreenImage(context, current.imagePath),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  File(current.imagePath),
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
           Text('题目：${current.correctedText}', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           Text('掌握状态：${current.masteryLevel.name}'),
@@ -80,6 +95,22 @@ class QuestionDetailScreen extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String imagePath) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.file(File(imagePath)),
+            ),
+          ),
+        ),
       ),
     );
   }
