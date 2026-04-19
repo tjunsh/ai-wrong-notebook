@@ -262,18 +262,27 @@ class _QuestionCard extends StatelessWidget {
                       color: subjectIcon.color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(22),
                     ),
-                    child: Icon(subjectIcon.icon, size: 20, color: subjectIcon.color),
+                    child: Hero(
+                      tag: 'subject_icon_${question.id}',
+                      child: Icon(subjectIcon.icon, size: 20, color: subjectIcon.color),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          question.correctedText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                        Hero(
+                          tag: 'question_text_${question.id}',
+                          child: Material(
+                            color: Colors.transparent,
+                            child: Text(
+                              question.correctedText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Row(

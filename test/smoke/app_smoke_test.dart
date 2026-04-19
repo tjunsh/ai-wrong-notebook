@@ -35,20 +35,6 @@ class _OnboardingDoneSettings implements SettingsRepository {
   Future<void> setString(String key, String value) async {}
 }
 
-class _FreshSettingsRepo implements SettingsRepository {
-  @override
-  Future<AiProviderConfig?> getAiProviderConfig() async => null;
-
-  @override
-  Future<void> saveAiProviderConfig(AiProviderConfig config) async {}
-
-  @override
-  Future<String?> getString(String key) async => null;
-
-  @override
-  Future<void> setString(String key, String value) async {}
-}
-
 void main() {
   group('MVP smoke tests', () {
     testWidgets('app boots to shell with Home tab label', (tester) async {

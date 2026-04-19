@@ -70,27 +70,39 @@ class QuestionDetailScreen extends ConsumerWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEEF2FF),
-                        borderRadius: BorderRadius.circular(6),
+                    Hero(
+                      tag: 'subject_icon_${current.id}',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(current.subject.label, style: const TextStyle(fontSize: 12, color: Color(0xFF4F46E5))),
                       ),
-                      child: Text(current.subject.label, style: const TextStyle(fontSize: 12, color: Color(0xFF4F46E5))),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: masteryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
+                    Hero(
+                      tag: 'mastery_${current.id}',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: masteryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(_masteryLabel(current.masteryLevel), style: TextStyle(fontSize: 12, color: masteryColor, fontWeight: FontWeight.w500)),
                       ),
-                      child: Text(_masteryLabel(current.masteryLevel), style: TextStyle(fontSize: 12, color: masteryColor, fontWeight: FontWeight.w500)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(current.correctedText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                Hero(
+                  tag: 'question_text_${current.id}',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Text(current.correctedText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  ),
+                ),
               ],
             ),
           ),
