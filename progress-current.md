@@ -5,16 +5,19 @@ type: project
 ---
 
 Done:
-- Commit queue (today): onboarding routing, prompt settings, subject mgmt counts,
-  notebook FAB fix, analysis loading animation, lint cleanup
-- 4 new commits: 1897db0, 74ee575, e1cf495, 41945a1, 8d1e338
-- Total 33/33 tests passing, 0 errors, 5 info lints (non-blocking)
+- QuestionCorrectionScreen: InteractiveViewer pinch-to-zoom, manual input fallback
+- QuestionDetailScreen: card-based layout, edit button, mastery chips, stats
+- HomeScreen: review banner, icon avatars in recent list
+- ReviewScreen: summary card, progress stats, empty state celebration
+- ReviewHistoryScreen: relative dates (今天/昨天), empty state, mastery chips
+- android/build.gradle.kts: enable core library desugaring + multiDex
+- APK builds: arm (98MB), arm64 (✓), x64 (✓), universal (188MB)
 
 Blockers:
 - None
 
 Next First Step:
-- flutter run on device/emulator
+- Install APK on device and verify full user flow
 
 Tomorrow first action:
-- `flutter run` to verify full MVP flow
+- `adb install build/app/outputs/flutter-apk/app-debug.apk` then test onboarding → capture → OCR → AI → save → review
