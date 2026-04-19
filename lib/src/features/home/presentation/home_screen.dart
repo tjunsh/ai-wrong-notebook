@@ -26,8 +26,22 @@ class HomeScreen extends ConsumerWidget {
           ),
           icon: const Icon(Icons.camera_alt_outlined),
           label: const Text('拍照录题'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(double.infinity, 52),
+          ),
         ),
         const SizedBox(height: 24),
+        dueAsync.when(
+          data: (due) => due.isNotEmpty
+              ? _ReviewBanner(
+                  count: due.length,
+                  onTap: () => context.go('/review'),
+                )
+              : const SizedBox.shrink(),
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
         Text('学习统计', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         questionsAsync.when(
@@ -88,24 +102,88 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildRecentList(BuildContext context, WidgetRef ref, List<QuestionRecord> questions) {
     if (questions.isEmpty) {
-      return const Text('暂无错题，拍照开始添加', style: TextStyle(color: Colors.grey));
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: <Widget>[
+              Icon(Icons.quiz_outlined, size: 48, color: Colors.grey.shade300),
+              const SizedBox(height: 8),
+              const Text('暂无错题，拍照开始添加', style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ),
+      );
     }
     return Column(
       children: questions.take(5).map((q) {
         return Card(
           child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _masteryColor(q.masteryLevel).withOpacity(0.1),
+              child: Icon(Icons.quiz_outlined, size: 18, color: _masteryColor(q.masteryLevel)),
+            ),
             title: Text(q.correctedText, maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text(q.subject.label),
-            trailing: IconButton(
-              icon: const Icon(Icons.chevron_right),
-              onPressed: () {
-                ref.read(currentQuestionProvider.notifier).state = q;
-                context.go('/notebook/question/${q.id}');
-              },
-            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              ref.read(currentQuestionProvider.notifier).state = q;
+              context.go('/notebook/question/${q.id}');
+            },
           ),
         );
       }).toList(),
+    );
+  }
+
+  Color _masteryColor(MasteryLevel level) {
+    switch (level) {
+      case MasteryLevel.newQuestion: return Colors.grey;
+      case MasteryLevel.reviewing: return Colors.orange;
+      case MasteryLevel.mastered: return Colors.green;
+    }
+  }
+}
+
+class _ReviewBanner extends StatelessWidget {
+  const _ReviewBanner({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.orange.shade50,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: <Widget>[
+              CircleAvatar(
+                backgroundColor: Colors.orange.shade100,
+                child: const Icon(Icons.refresh, color: Colors.orange),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('今日待复习', style: Theme.of(context).textTheme.titleSmall),
+                    Text(
+                      '你有 $count 道错题等待巩固',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.orange),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
