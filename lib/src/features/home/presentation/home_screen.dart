@@ -111,17 +111,17 @@ class _StatsGridSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       children: <Widget>[
-        const Row(
+        Row(
           children: <Widget>[
             Expanded(child: _StatCardSkeleton()),
             SizedBox(width: 12, height: 70),
             Expanded(child: _StatCardSkeleton()),
           ],
         ),
-        const SizedBox(height: 12),
-        const Row(
+        SizedBox(height: 12),
+        Row(
           children: <Widget>[
             Expanded(child: _StatCardSkeleton()),
             SizedBox(width: 12, height: 70),
