@@ -1,11 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
+import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
+import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
+import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
+import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 
 class DataManagementScreen extends ConsumerWidget {
   const DataManagementScreen({super.key});
@@ -28,6 +34,16 @@ class DataManagementScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.upload_outlined),
+                title: const Text('导入错题'),
+                subtitle: const Text('从 JSON 文件导入错题记录'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _importQuestions(context, ref),
+              ),
+            ),
+            const SizedBox(height: 8),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.download_outlined),
@@ -116,6 +132,103 @@ class DataManagementScreen extends ConsumerWidget {
             }
           : null,
     };
+  }
+
+  Future<void> _importQuestions(BuildContext context, WidgetRef ref) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+      if (result == null || result.files.isEmpty) return;
+
+      final file = File(result.files.first.path!);
+      final content = await file.readAsString();
+      final list = jsonDecode(content) as List;
+      final repo = ref.read(questionRepositoryProvider);
+      int imported = 0;
+
+      for (final item in list) {
+        final map = item as Map<String, dynamic>;
+        final record = _jsonToQuestion(map);
+        if (record != null) {
+          await repo.saveDraft(record);
+          imported++;
+        }
+      }
+
+      invalidateQuestionList(ref);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('成功导入 $imported 道错题')),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导入失败: $e')),
+        );
+      }
+    }
+  }
+
+  QuestionRecord? _jsonToQuestion(Map<String, dynamic> map) {
+    try {
+      final analysisMap = map['analysisResult'] as Map<String, dynamic>?;
+      List<GeneratedExercise>? exercises;
+      if (analysisMap != null) {
+        final exList = analysisMap['generatedExercises'] as List?;
+        if (exList != null) {
+          exercises = exList.map((e) {
+            final em = e as Map<String, dynamic>;
+            return GeneratedExercise(
+              id: em['id'] as String? ?? '',
+              difficulty: em['difficulty'] as String? ?? '',
+              question: em['question'] as String? ?? '',
+              answer: em['answer'] as String? ?? '',
+              explanation: em['explanation'] as String? ?? '',
+              isCorrect: em['isCorrect'] as bool?,
+            );
+          }).toList();
+        }
+      }
+
+      return QuestionRecord(
+        id: map['id'] as String? ?? '',
+        imagePath: map['imagePath'] as String? ?? '',
+        subject: Subject.values.firstWhere(
+          (s) => s.name == map['subject'],
+          orElse: () => Subject.math,
+        ),
+        recognizedText: map['recognizedText'] as String? ?? '',
+        correctedText: map['correctedText'] as String? ?? '',
+        tags: List<String>.from(map['tags'] as List? ?? []),
+        contentStatus: ContentStatus.values.firstWhere(
+          (s) => s.name == map['contentStatus'],
+          orElse: () => ContentStatus.processing,
+        ),
+        masteryLevel: MasteryLevel.values.firstWhere(
+          (m) => m.name == map['masteryLevel'],
+          orElse: () => MasteryLevel.newQuestion,
+        ),
+        isFavorite: map['isFavorite'] as bool? ?? false,
+        reviewCount: map['reviewCount'] as int? ?? 0,
+        createdAt: DateTime.tryParse(map['createdAt'] as String? ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(map['updatedAt'] as String? ?? '') ?? DateTime.now(),
+        lastReviewedAt: map['lastReviewedAt'] != null
+            ? DateTime.tryParse(map['lastReviewedAt'] as String)
+            : null,
+        analysisResult: analysisMap != null
+            ? AnalysisResult(
+                finalAnswer: analysisMap['finalAnswer'] as String? ?? '',
+                steps: List<String>.from(analysisMap['steps'] as List? ?? []),
+                knowledgePoints: List<String>.from(analysisMap['knowledgePoints'] as List? ?? []),
+                mistakeReason: analysisMap['mistakeReason'] as String? ?? '',
+                studyAdvice: analysisMap['studyAdvice'] as String? ?? '',
+                generatedExercises: exercises ?? [],
+              )
+            : null,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   void _confirmClearAll(BuildContext context, WidgetRef ref, int count) {
