@@ -5,35 +5,39 @@ type: project
 ---
 
 Done:
-- Review CRUD 第 1 步：ReviewController 接入 QuestionRepository，_markReviewed 持久化到 DB，7 个测试
-- Review CRUD 第 2 步：ReviewLogRepository + DriftReviewLogRepository 实现，每次复习写入 ReviewLogs 表，11 个测试
-- Review CRUD 第 3 步：QuestionDetailScreen 改为"仍需复习/已掌握"两个按钮，调用 ReviewController
-- Exercise Practice UI（代码完成）：GeneratedExercise.copyWith + AnalysisResult.copyWith，ExercisePracticeScreen（逐题标记对错，结束后回写 DB）
-- 统一路由：AnalysisResultScreen/QuestionDetailScreen 改为读取 currentQuestionProvider
+- Route wiring: GoRouter redirect for onboarding (/onboarding → first-launch check)
+  using SettingsRepository, 7 routes wired across all screens
+- OnboardingScreen: 3-page PageView (拍照录题/AI智能分析/随时复习), saves
+  onboarding_done=true to settings on finish
+- Restructured app.dart + main.dart: GoRouter created outside ProviderScope
+  to enable test provider overrides with redirect
+- Smoke tests updated: _OnboardingDoneSettings stub, 33 tests pass
+- Cleanup: 5 unused imports, 2 dead fields (_withConfig/_dio), deleted 3 unused DAO placeholders
+- Android applicationId/namespace → com.smartwrongnotebook.app, moved MainActivity.kt
+- iOS display name → 智能错题本
 
 Blockers:
-- impl-exercises worktree 的 sqlite3 build hook 因 GitHub 下载超时失败，flutter test 无法运行（网络/VPN 问题）
-- Step 4（Exercise Practice）的 3 个新测试尚未验证通过
+- None
 
 Next First Step:
-- 修复 impl-exercises worktree 的 sqlite3 hook，运行 exercise_practice_test.dart 测试
-- 提交并合并 Exercise Practice 功能到 main
+- Build and test on device/emulator
 
 Tomorrow first action:
-- 在 impl-exercises worktree 内运行：export SQLITE3_NO_DOWNLOAD=true && dart run build_runner build --delete-conflicting-outputs，然后 flutter test
-- 如仍失败，直接在 worktree 内验证 analyze 无错后提交，测试在 main 合并后验证
+- `flutter run` to verify onboarding flow and full capture→analysis→save cycle
 
-Files changed this session (merged to main):
-- lib/src/features/notebook/presentation/question_detail_screen.dart（_markReviewed 持久化 + 复习双按钮）
-- lib/src/features/review/presentation/review_controller.dart（接仓库 + 写日志）
-- lib/src/domain/repositories/review_log_repository.dart（新建，接口+InMemory实现）
-- lib/src/data/repositories/drift_review_log_repository.dart（新建）
-- lib/src/app/providers.dart（reviewLogRepositoryProvider）
-- lib/src/domain/models/analysis_result.dart（copyWith）
-- lib/src/domain/models/generated_exercise.dart（copyWith）
-- test/features/review/review_controller_test.dart（11 个测试）
-- lib/src/features/analysis/presentation/exercise_practice_screen.dart（worktree 未合并）
-- lib/src/app/router.dart（exercise/practice 路由，worktree 未合并）
-- test/features/analysis/exercise_practice_test.dart（worktree 未合并）
-
-Good night.
+MVP Feature Status:
+- ✅ GoRouter routing + StatefulShellRoute tab nav
+- ✅ Onboarding screen (first-launch)
+- ✅ Home screen (stats, recent, camera entry)
+- ✅ Capture: camera/gallery → image storage
+- ✅ OCR: ML Kit Chinese text recognition
+- ✅ Question Correction: image display, OCR trigger
+- ✅ OCR Confirmation: text edit + subject select
+- ✅ AI Analysis: DeepSeek/OpenAI API, fake fallback
+- ✅ Analysis Result: rich card layout with steps/knowledge/exercises
+- ✅ Exercise Practice: mark correct/incorrect, persist results
+- ✅ Notebook: list/filter/search, detail view, mastery management
+- ✅ Review: due questions, mastery lifecycle, review logs
+- ✅ Settings: theme mode, notification trigger, AI provider config, subjects, data import/export
+- ✅ Drift SQLite persistence
+- ✅ All 33 tests passing
