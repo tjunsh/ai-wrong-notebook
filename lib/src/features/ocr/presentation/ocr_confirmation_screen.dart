@@ -39,15 +39,15 @@ class _OcrConfirmationScreenState extends ConsumerState<OcrConfirmationScreen> {
       appBar: AppBar(title: const Text('识别确认')),
       body: Column(
         children: <Widget>[
-          if (hasImage)
+          if (hasImage && current != null)
             GestureDetector(
-              onTap: () => _showFullImage(context, current!.imagePath),
+              onTap: () => _showFullImage(context, current.imagePath),
               child: Container(
                 height: 120,
                 width: double.infinity,
                 color: Colors.grey.shade100,
                 child: Image.file(
-                  File(current!.imagePath),
+                  File(current.imagePath),
                   fit: BoxFit.contain,
                 ),
               ),

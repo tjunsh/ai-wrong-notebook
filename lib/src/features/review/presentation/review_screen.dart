@@ -57,7 +57,6 @@ class ReviewScreen extends ConsumerWidget {
   }
 
   Widget _buildSummaryCard(BuildContext context, List<QuestionRecord> questions) {
-    final total = questions.length;
     final mastered = questions.where((q) => q.masteryLevel == MasteryLevel.mastered).length;
     final reviewing = questions.where((q) => q.masteryLevel == MasteryLevel.reviewing).length;
     final newQ = questions.where((q) => q.masteryLevel == MasteryLevel.newQuestion).length;
@@ -68,7 +67,13 @@ class ReviewScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('整体进度', style: Theme.of(context).textTheme.titleSmall),
+            Row(
+              children: <Widget>[
+                Text('整体进度', style: Theme.of(context).textTheme.titleSmall),
+                const Spacer(),
+                Text('共 ${questions.length} 题', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              ],
+            ),
             const SizedBox(height: 12),
             Row(
               children: <Widget>[
