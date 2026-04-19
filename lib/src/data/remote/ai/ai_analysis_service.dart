@@ -42,12 +42,13 @@ class AiAnalysisService {
 
     final dio = _createClient(config);
     final prompt = _buildPrompt(correctedText, subjectName);
+    final systemPrompt = await _loadSystemPrompt();
 
     try {
       final response = await dio.post('/chat/completions', data: <String, dynamic>{
         'model': config.model,
         'messages': <Map<String, String>>[
-          <String, String>{'role': 'system', 'content': _systemPrompt()},
+          <String, String>{'role': 'system', 'content': systemPrompt},
           <String, String>{'role': 'user', 'content': prompt},
         ],
         'temperature': 0.7,
@@ -63,8 +64,7 @@ class AiAnalysisService {
     }
   }
 
-  String _systemPrompt() {
-    return '''你是一个专业的错题分析助手。请根据学生的错题内容进行分析，并以 JSON 格式返回结果。
+  static const _defaultSystemPrompt = '''你是一个专业的错题分析助手。请根据学生的错题内容进行分析，并以 JSON 格式返回结果。
 返回格式必须严格如下（不要包含 markdown 代码块标记）：
 {
   "finalAnswer": "正确答案",
@@ -76,6 +76,10 @@ class AiAnalysisService {
     {"id": "e1", "difficulty": "简单", "question": "题目", "answer": "答案", "explanation": "解析"}
   ]
 }''';
+
+  Future<String> _loadSystemPrompt() async {
+    final custom = await settingsRepository.getString('system_prompt');
+    return custom?.isNotEmpty == true ? custom! : _defaultSystemPrompt;
   }
 
   String _buildPrompt(String correctedText, String subjectName) {
