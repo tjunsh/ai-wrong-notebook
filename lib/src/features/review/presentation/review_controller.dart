@@ -67,7 +67,8 @@ class ReviewController {
   }
 
   Future<void> _writeLog(String questionId, String result, MasteryLevel masteryAfter) async {
-    if (_logRepository == null) return;
+    final repo = _logRepository;
+    if (repo == null) return;
     final log = ReviewLog(
       id: const Uuid().v4(),
       questionRecordId: questionId,
@@ -75,6 +76,6 @@ class ReviewController {
       result: result,
       masteryAfter: masteryAfter,
     );
-    await _logRepository!.insert(log);
+    await repo.insert(log);
   }
 }
