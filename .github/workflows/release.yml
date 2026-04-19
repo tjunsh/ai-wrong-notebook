@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.0
+
+      - run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Build release bundle
+        run: flutter build appbundle --release
+
+      - name: Upload APK
+        uses: actions/upload-release-asset@v4
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/app/outputs/flutter-apk/app-release.apk
+          asset_name: smart_wrong_notebook-release.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload AAB
+        uses: actions/upload-release-asset@v4
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/app/outputs/bundle/release/app-release.aab
+          asset_name: smart_wrong_notebook-release.aab
+          asset_content_type: application/vnd.android.bundle
