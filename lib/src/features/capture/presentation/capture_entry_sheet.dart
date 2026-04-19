@@ -31,15 +31,16 @@ class CaptureEntrySheet extends ConsumerWidget {
   }
 
   Future<void> _pickAndNavigate(BuildContext context, WidgetRef ref, {required bool fromCamera}) async {
+    final router = GoRouter.of(context);
     Navigator.pop(context);
     final capture = ref.read(captureServiceProvider);
     final record = fromCamera
         ? await capture.pickFromCamera()
         : await capture.pickFromGallery();
 
-    if (record != null && context.mounted) {
+    if (record != null) {
       ref.read(currentQuestionProvider.notifier).state = record;
-      context.go('/capture/correction');
+      router.go('/capture/correction');
     }
   }
 }
