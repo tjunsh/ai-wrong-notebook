@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,11 +15,29 @@ class AnalysisLoadingScreen extends ConsumerStatefulWidget {
 
 class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
   String? _errorMessage;
+  int _step = 0;
+
+  final _steps = const ['正在分析题目...', '正在生成解析...', '正在生成练习题...', '即将完成...'];
 
   @override
   void initState() {
     super.initState();
     _runAnalysis();
+    _animateSteps();
+  }
+
+  void _animateSteps() {
+    Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_step < _steps.length - 1) {
+        setState(() => _step++);
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   Future<void> _runAnalysis() async {
@@ -63,8 +82,12 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
                     const SizedBox(height: 24),
                     FilledButton(
                       onPressed: () {
-                        setState(() => _errorMessage = null);
+                        setState(() {
+                          _errorMessage = null;
+                          _step = 0;
+                        });
                         _runAnalysis();
+                        _animateSteps();
                       },
                       child: const Text('重试'),
                     ),
@@ -76,14 +99,59 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
                   ],
                 ),
               )
-            : const Column(
+            : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('AI 正在思考...'),
+                  const _RotatingBrainIcon(),
+                  const SizedBox(height: 24),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 24),
+                  Text(_steps[_step], style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'AI 正在分析中，请稍候...',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _RotatingBrainIcon extends StatefulWidget {
+  const _RotatingBrainIcon();
+
+  @override
+  State<_RotatingBrainIcon> createState() => _RotatingBrainIconState();
+}
+
+class _RotatingBrainIconState extends State<_RotatingBrainIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => Transform.rotate(
+        angle: _controller.value * 2 * 3.14159,
+        child: const Icon(Icons.psychology_outlined, size: 64, color: Colors.indigo),
       ),
     );
   }
