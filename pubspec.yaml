@@ -33,3 +33,11 @@ dev_dependencies:
   drift_dev: ^2.22.0
   build_runner: ^2.4.14
   json_serializable: ^6.8.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#6366F1"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"

@@ -119,9 +119,21 @@ class _QuestionCorrectionScreenState extends ConsumerState<QuestionCorrectionScr
             ),
           ),
           if (_ocrError != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_ocrError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFED7AA)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.error_outline, size: 18, color: Color(0xFFEA580C)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(_ocrError!, style: const TextStyle(fontSize: 13, color: Color(0xFF9A3412)))),
+                ],
+              ),
             ),
         ],
       ),
@@ -186,9 +198,17 @@ class _QuestionCorrectionScreenState extends ConsumerState<QuestionCorrectionScr
 
       if (mounted) context.go('/capture/ocr-confirmation');
     } catch (e) {
+      String errorMsg;
+      if (e.toString().contains('PERMISSION_DENIED') || e.toString().contains('permission')) {
+        errorMsg = '相机权限被拒绝，请在设置中开启相机权限';
+      } else if (e.toString().contains('CANCEL')) {
+        errorMsg = '操作已取消';
+      } else {
+        errorMsg = '识别失败，请重试或手动输入';
+      }
       setState(() {
         _ocrLoading = false;
-        _ocrError = 'OCR 失败: $e';
+        _ocrError = errorMsg;
       });
     }
   }

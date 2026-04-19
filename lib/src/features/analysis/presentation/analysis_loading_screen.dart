@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/common/widgets/state_views.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
 
@@ -70,7 +71,11 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _errorMessage != null
-          ? _ErrorView(message: _errorMessage!, onRetry: _retry)
+          ? ErrorView(
+              message: _errorMessage!,
+              icon: Icons.cloud_off_outlined,
+              onRetry: _retry,
+            )
           : _LoadingView(step: _step, steps: _steps),
     );
   }
@@ -149,49 +154,6 @@ class _LoadingViewState extends State<_LoadingView> with SingleTickerProviderSta
             Text(
               'AI 正在分析中，请稍候...',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              width: 64, height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF7ED),
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: const Icon(Icons.error_outline, color: Color(0xFFEA580C), size: 32),
-            ),
-            const SizedBox(height: 20),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
-            const SizedBox(height: 28),
-            FilledButton(
-              onPressed: onRetry,
-              style: FilledButton.styleFrom(minimumSize: const Size(140, 44)),
-              child: const Text('重试'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () => context.go('/'),
-              style: OutlinedButton.styleFrom(minimumSize: const Size(140, 44)),
-              child: const Text('返回首页'),
             ),
           ],
         ),

@@ -34,6 +34,20 @@ class _OnboardingDoneSettings implements SettingsRepository {
   Future<void> setString(String key, String value) async {}
 }
 
+class _FreshSettingsRepo implements SettingsRepository {
+  @override
+  Future<AiProviderConfig?> getAiProviderConfig() async => null;
+
+  @override
+  Future<void> saveAiProviderConfig(AiProviderConfig config) async {}
+
+  @override
+  Future<String?> getString(String key) async => null;
+
+  @override
+  Future<void> setString(String key, String value) async {}
+}
+
 void main() {
   group('MVP smoke tests', () {
     testWidgets('app boots to shell with Home tab label', (tester) async {
@@ -159,6 +173,33 @@ void main() {
       _router.go('/settings/prompts');
       await tester.pumpAndSettle();
       expect(find.text('提示词设置'), findsOneWidget);
+    });
+
+    testWidgets('onboarding screen shows three pages with skip and next', (tester) async {
+      final freshSettings = _FreshSettingsRepo();
+      final freshRouter = buildRouter(freshSettings);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          questionRepositoryProvider.overrideWithValue(_inMemRepo),
+          settingsRepositoryProvider.overrideWithValue(freshSettings),
+        ],
+        child: SmartWrongNotebookApp(routerConfig: freshRouter),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('智能错题本'), findsOneWidget);
+      expect(find.text('拍照录题'), findsOneWidget);
+      expect(find.text('跳过'), findsOneWidget);
+      expect(find.text('下一步'), findsOneWidget);
+
+      await tester.tap(find.text('下一步'));
+      await tester.pumpAndSettle();
+      expect(find.text('AI 解析'), findsOneWidget);
+
+      await tester.tap(find.text('下一步'));
+      await tester.pumpAndSettle();
+      expect(find.text('举一反三'), findsOneWidget);
+      expect(find.text('开始使用'), findsOneWidget);
     });
   });
 }
