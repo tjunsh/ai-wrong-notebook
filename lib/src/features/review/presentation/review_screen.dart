@@ -36,6 +36,13 @@ class ReviewScreen extends ConsumerWidget {
                   onTap: () => _startReview(context, ref, q),
                 ),
               )),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('复习记录'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/review/history'),
+            ),
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
