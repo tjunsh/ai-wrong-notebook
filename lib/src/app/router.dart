@@ -34,7 +34,7 @@ GoRouter buildRouter(SettingsRepository settingsRepo) {
       return null;
     },
     routes: <RouteBase>[
-      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
+      GoRoute(path: '/onboarding', pageBuilder: (_, __) => _buildPage(const OnboardingScreen())),
       StatefulShellRoute.indexedStack(
         builder: (BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell) {
           return ScaffoldWithNavBar(navigationShell: navigationShell);
@@ -71,14 +71,28 @@ GoRouter buildRouter(SettingsRepository settingsRepo) {
           ),
         ],
       ),
-      GoRoute(path: '/capture/correction', builder: (_, __) => const QuestionCorrectionScreen()),
-      GoRoute(path: '/capture/ocr-confirmation', builder: (_, __) => const OcrConfirmationScreen()),
-      GoRoute(path: '/analysis/loading', builder: (_, __) => const AnalysisLoadingScreen()),
-      GoRoute(path: '/analysis/result', builder: (_, __) => const AnalysisResultScreen()),
-      GoRoute(path: '/exercise/practice', builder: (_, __) => const ExercisePracticeScreen()),
-      GoRoute(path: '/notebook/question/:id', builder: (_, __) => const QuestionDetailScreen()),
-      GoRoute(path: '/review/history', builder: (_, __) => const ReviewHistoryScreen()),
+      GoRoute(path: '/capture/correction', pageBuilder: (_, __) => _buildPage(const QuestionCorrectionScreen())),
+      GoRoute(path: '/capture/ocr-confirmation', pageBuilder: (_, __) => _buildPage(const OcrConfirmationScreen())),
+      GoRoute(path: '/analysis/loading', pageBuilder: (_, __) => _buildPage(const AnalysisLoadingScreen())),
+      GoRoute(path: '/analysis/result', pageBuilder: (_, __) => _buildPage(const AnalysisResultScreen())),
+      GoRoute(path: '/exercise/practice', pageBuilder: (_, __) => _buildPage(const ExercisePracticeScreen())),
+      GoRoute(path: '/notebook/question/:id', pageBuilder: (_, __) => _buildPage(const QuestionDetailScreen())),
+      GoRoute(path: '/review/history', pageBuilder: (_, __) => _buildPage(const ReviewHistoryScreen())),
     ],
+  );
+}
+
+CustomTransitionPage _buildPage(Widget child) {
+  return CustomTransitionPage(
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+      );
+    },
   );
 }
 

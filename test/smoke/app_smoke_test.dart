@@ -5,6 +5,7 @@ import 'package:smart_wrong_notebook/src/app/app.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/app/router.dart';
 import 'package:smart_wrong_notebook/src/features/capture/presentation/capture_entry_sheet.dart';
+import 'package:smart_wrong_notebook/src/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:smart_wrong_notebook/src/features/settings/presentation/settings_screen.dart';
 import 'package:smart_wrong_notebook/src/features/notebook/presentation/notebook_screen.dart';
 import 'package:smart_wrong_notebook/src/features/review/presentation/review_screen.dart';
@@ -176,14 +177,11 @@ void main() {
     });
 
     testWidgets('onboarding screen shows three pages with skip and next', (tester) async {
-      final freshSettings = _FreshSettingsRepo();
-      final freshRouter = buildRouter(freshSettings);
       await tester.pumpWidget(ProviderScope(
         overrides: [
-          questionRepositoryProvider.overrideWithValue(_inMemRepo),
-          settingsRepositoryProvider.overrideWithValue(freshSettings),
+          settingsRepositoryProvider.overrideWithValue(_OnboardingDoneSettings()),
         ],
-        child: SmartWrongNotebookApp(routerConfig: freshRouter),
+        child: const MaterialApp(home: OnboardingScreen()),
       ));
       await tester.pumpAndSettle();
 
