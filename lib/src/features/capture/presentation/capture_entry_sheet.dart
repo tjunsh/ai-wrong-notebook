@@ -3,12 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/services/capture_service.dart';
 
-class CaptureEntrySheet extends ConsumerWidget {
+class CaptureEntrySheet extends ConsumerStatefulWidget {
   const CaptureEntrySheet({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CaptureEntrySheet> createState() => _CaptureEntrySheetState();
+}
+
+class _CaptureEntrySheetState extends ConsumerState<CaptureEntrySheet> {
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -28,40 +37,116 @@ class CaptureEntrySheet extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
-            _EntryOption(
-              icon: CupertinoIcons.camera,
-              iconColor: const Color(0xFF6366F1),
-              iconBg: const Color(0xFFEEF2FF),
-              label: '拍照',
-              description: '使用相机拍摄错题',
-              onTap: () => _pickAndNavigate(context, ref, fromCamera: true),
-            ),
-            const SizedBox(height: 10),
-            _EntryOption(
-              icon: CupertinoIcons.photo,
-              iconColor: const Color(0xFFD97706),
-              iconBg: const Color(0xFFFFFBEB),
-              label: '相册',
-              description: '从相册选择图片',
-              onTap: () => _pickAndNavigate(context, ref, fromCamera: false),
-            ),
+            if (_isLoading)
+              Container(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  children: <Widget>[
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text('正在打开相机...', style: TextStyle(color: Colors.grey.shade600)),
+                  ],
+                ),
+              )
+            else ...<Widget>[
+              _EntryOption(
+                icon: CupertinoIcons.camera,
+                iconColor: const Color(0xFF6366F1),
+                iconBg: const Color(0xFFEEF2FF),
+                label: '拍照',
+                description: '使用相机拍摄错题',
+                onTap: () => _pickAndNavigate(fromCamera: true),
+              ),
+              const SizedBox(height: 10),
+              _EntryOption(
+                icon: CupertinoIcons.photo,
+                iconColor: const Color(0xFFD97706),
+                iconBg: const Color(0xFFFFFBEB),
+                label: '相册',
+                description: '从相册选择图片',
+                onTap: () => _pickAndNavigate(fromCamera: false),
+              ),
+            ],
+            if (_errorMessage != null) ...<Widget>[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFED7AA)),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    const Icon(CupertinoIcons.exclamationmark_triangle, size: 18, color: Color(0xFFEA580C)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_errorMessage!, style: const TextStyle(fontSize: 13, color: Color(0xFF9A3412))),
+                    ),
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.xmark, size: 16),
+                      onPressed: () => setState(() => _errorMessage = null),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Future<void> _pickAndNavigate(BuildContext context, WidgetRef ref, {required bool fromCamera}) async {
+  Future<void> _pickAndNavigate({required bool fromCamera}) async {
     final router = GoRouter.of(context);
-    Navigator.pop(context);
-    final capture = ref.read(captureServiceProvider);
-    final record = fromCamera
-        ? await capture.pickFromCamera()
-        : await capture.pickFromGallery();
 
-    if (record != null) {
-      ref.read(currentQuestionProvider.notifier).state = record;
-      router.go('/capture/correction');
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final capture = ref.read(captureServiceProvider);
+      final result = fromCamera
+          ? await capture.pickFromCamera()
+          : await capture.pickFromGallery();
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (result.isCancelled) {
+        // User cancelled - just close the sheet silently
+        Navigator.pop(context);
+        return;
+      }
+
+      if (result.errorMessage != null) {
+        // Show error message
+        String message;
+        if (result.errorMessage!.contains('permission')) {
+          message = '相机权限被拒绝，请在系统设置中开启';
+        } else {
+          message = '打开失败: ${result.errorMessage}';
+        }
+        setState(() => _errorMessage = message);
+        return;
+      }
+
+      if (result.record != null) {
+        Navigator.pop(context);
+        ref.read(currentQuestionProvider.notifier).state = result.record;
+        print('[CaptureEntrySheet] Navigating to /capture/crop');
+        router.go('/capture/crop');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '操作失败: $e';
+      });
     }
   }
 }

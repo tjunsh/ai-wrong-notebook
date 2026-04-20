@@ -72,13 +72,25 @@ class AnalysisResultScreen extends ConsumerWidget {
           ],
           if (result != null) ...<Widget>[
             const SizedBox(height: 20),
+            // Original question from image
+            _SectionCard(
+              icon: CupertinoIcons.doc_text,
+              iconColor: const Color(0xFF6366F1),
+              bg: const Color(0xFFEEF2FF),
+              border: const Color(0xFFC7D2FE),
+              title: '原题',
+              titleColor: const Color(0xFF4338CA),
+              content: record.correctedText.isNotEmpty ? record.correctedText : '（从图片识别）',
+              contentColor: const Color(0xFF3730A3),
+            ),
+            const SizedBox(height: 10),
             // Answer
             _SectionCard(
               icon: CupertinoIcons.checkmark_circle,
               iconColor: const Color(0xFF16A34A),
               bg: const Color(0xFFF0FDF4),
               border: const Color(0xFFBBF7D0),
-              title: '正确答案',
+              title: '正确解答',
               titleColor: const Color(0xFF166534),
               content: result.finalAnswer,
               contentColor: const Color(0xFF15803D),

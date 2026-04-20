@@ -1,22 +1,30 @@
 ---
-name: progress-2026-04-21-evening
+name: progress-2026-04-22-morning
 description: End of session progress for smart-wrong-notebook
 type: project
 ---
 
 Done:
-- 修复 Material Icons 在 Android 16 (OPPO Find X8 Ultra) 显示 X 的问题
-- 全面替换 Material Icons 为 CupertinoIcons（~40处）
-- 设置页面导航：添加 4 个子页面的返回按钮
-- Theme 切换功能：系统/浅色/深色动态生效（v10）
-- Drift 数据库集成完成
-- APK v10 构建成功
+- 修复 Material Icons 显示 X 问题（~40处替换为 CupertinoIcons）
+- 添加 image_cropper 包和裁剪界面（框选题目区域）
+- CaptureService 添加更好的错误处理
+- 设置页面添加返回按钮
+- Theme 切换功能动态生效（v10-v19）
+- **参考其他项目优化流程**：
+  - 裁剪完成后直接进入 AI 分析
+  - AI 分析服务支持图片输入（vision 模型）
+  - 结果页增加"原题"展示
+  - AI 直接从图片识别题目（不需要单独 OCR）
 
 Blockers:
-- None
+- **OCR 不工作**：Google ML Kit 点击识别文字后 APP 崩溃
+- 暂用方案：让 AI 直接从图片识别（需要配置支持 vision 的 AI 模型）
 
 Next First Step:
-- 测试 v10 APK：Theme 切换、设置页面导航、科目图标显示
+- 测试 v19 APK：验证完整流程
+- 检查 AI 是否能正确识别图片中的题目
+- 测试保存到错题本功能
 
 Tomorrow first action:
-- 测试 v10 APK 完整功能流程
+- 测试 v19 APK 完整功能流程
+- 验证 AI 分析是否正常工作

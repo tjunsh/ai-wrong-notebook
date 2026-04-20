@@ -40,7 +40,7 @@ class _QuestionCorrectionScreenState extends ConsumerState<QuestionCorrectionScr
         title: const Text('校正与框选'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.chevron_left),
-          onPressed: () => context.go('/notebook'),
+          onPressed: () => context.go('/'),
         ),
       ),
       body: Column(

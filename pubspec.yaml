@@ -19,6 +19,7 @@ dependencies:
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.4
   image_picker: ^1.1.2
+  image_cropper: ^8.0.2
   google_mlkit_text_recognition: ^0.13.1
   share_plus: ^10.1.4
   file_picker: ^8.0.0

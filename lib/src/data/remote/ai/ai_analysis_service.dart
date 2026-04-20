@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 import 'package:smart_wrong_notebook/src/domain/models/ai_provider_config.dart';
@@ -23,13 +24,15 @@ class AiAnalysisService {
         if (config.apiKey.isNotEmpty) 'Authorization': 'Bearer ${config.apiKey}',
       },
       connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 120),
     ));
   }
 
+  /// 分析题目 - 支持图片输入
   Future<AnalysisResult> analyzeQuestion({
     required String correctedText,
     required String subjectName,
+    String? imagePath, // 可选：图片路径
   }) async {
     final config = await settingsRepository.getAiProviderConfig();
 
@@ -41,30 +44,162 @@ class AiAnalysisService {
     }
 
     final dio = _createClient(config);
-    final prompt = _buildPrompt(correctedText, subjectName);
     final systemPrompt = await _loadSystemPrompt();
 
     try {
-      final response = await dio.post('/chat/completions', data: <String, dynamic>{
-        'model': config.model,
-        'messages': <Map<String, String>>[
-          <String, String>{'role': 'system', 'content': systemPrompt},
-          <String, String>{'role': 'user', 'content': prompt},
-        ],
-        'temperature': 0.7,
-        'max_tokens': 2000,
-      });
+      // 如果有图片，尝试使用 vision 模型
+      if (imagePath != null && File(imagePath).existsSync()) {
+        return await _analyzeWithImage(dio, config, correctedText, subjectName, imagePath, systemPrompt);
+      }
 
-      final content = response.data['choices'][0]['message']['content'] as String;
-      return _parseResponse(content);
+      // 没有图片，使用纯文本分析
+      return await _analyzeWithText(dio, config, correctedText, subjectName, systemPrompt);
     } on DioException catch (e) {
+      // 如果图片分析失败，尝试纯文本
+      if (imagePath != null) {
+        try {
+          return await _analyzeWithText(dio, config, correctedText, subjectName, systemPrompt);
+        } catch (_) {}
+      }
       throw AiAnalysisException('AI 服务请求失败: ${e.message}');
     } catch (e) {
       throw AiAnalysisException('AI 解析失败: $e');
     }
   }
 
-  static const _defaultSystemPrompt = '''你是一个专业的错题分析助手。请根据学生的错题内容进行分析，并以 JSON 格式返回结果。
+  /// 使用图片进行分析（发送图片给 AI）
+  Future<AnalysisResult> _analyzeWithImage(
+    Dio dio,
+    AiProviderConfig config,
+    String correctedText,
+    String subjectName,
+    String imagePath,
+    String systemPrompt,
+  ) async {
+    // 读取图片并转为 base64
+    final imageFile = File(imagePath);
+    final imageBytes = await imageFile.readAsBytes();
+    final base64Image = base64Encode(imageBytes);
+
+    // 根据模型类型选择不同的请求格式
+    final model = config.model.toLowerCase();
+
+    if (model.contains('gpt') || model.contains('4o') || model.contains('4-turbo')) {
+      return await _analyzeWithOpenAI(dio, config, base64Image, correctedText, subjectName, systemPrompt);
+    } else if (model.contains('gemini')) {
+      return await _analyzeWithGemini(dio, config, base64Image, correctedText, subjectName, systemPrompt);
+    } else {
+      // 默认使用 OpenAI 格式
+      return await _analyzeWithOpenAI(dio, config, base64Image, correctedText, subjectName, systemPrompt);
+    }
+  }
+
+  /// OpenAI/GPT-4o 格式（支持 vision）
+  Future<AnalysisResult> _analyzeWithOpenAI(
+    Dio dio,
+    AiProviderConfig config,
+    String base64Image,
+    String correctedText,
+    String subjectName,
+    String systemPrompt,
+  ) async {
+    final prompt = _buildPrompt(correctedText, subjectName);
+
+    // 构造 vision 消息
+    final messages = <Map<String, dynamic>>[
+      {'role': 'system', 'content': systemPrompt},
+      {
+        'role': 'user',
+        'content': [
+          {'type': 'text', 'text': prompt},
+          {
+            'type': 'image_url',
+            'image_url': {'url': 'data:image/jpeg;base64,$base64Image'},
+          },
+        ],
+      },
+    ];
+
+    final response = await dio.post('/chat/completions', data: <String, dynamic>{
+      'model': config.model,
+      'messages': messages,
+      'temperature': 0.7,
+      'max_tokens': 2000,
+    });
+
+    final content = response.data['choices'][0]['message']['content'] as String;
+    return _parseResponse(content);
+  }
+
+  /// Gemini 格式
+  Future<AnalysisResult> _analyzeWithGemini(
+    Dio dio,
+    AiProviderConfig config,
+    String base64Image,
+    String correctedText,
+    String subjectName,
+    String systemPrompt,
+  ) async {
+    // Gemini 使用不同的 API 格式
+    final prompt = '''$systemPrompt
+
+请分析以下$subjectName错题图片：
+
+$correctedText
+
+请以 JSON 格式返回分析结果。''';
+
+    final response = await dio.post(
+      '/v1beta/models/${config.model}:generateContent',
+      data: <String, dynamic>{
+        'contents': [
+          {
+            'parts': [
+              {'text': prompt},
+              {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Image}},
+            ],
+          },
+        ],
+        'generationConfig': {
+          'temperature': 0.7,
+          'maxOutputTokens': 2000,
+        },
+      },
+    );
+
+    final text = response.data['candidates'][0]['content']['parts'][0]['text'] as String;
+    return _parseResponse(text);
+  }
+
+  /// 纯文本分析（无图片）
+  Future<AnalysisResult> _analyzeWithText(
+    Dio dio,
+    AiProviderConfig config,
+    String correctedText,
+    String subjectName,
+    String systemPrompt,
+  ) async {
+    final prompt = _buildPrompt(correctedText, subjectName);
+
+    final response = await dio.post('/chat/completions', data: <String, dynamic>{
+      'model': config.model,
+      'messages': <Map<String, String>>[
+        <String, String>{'role': 'system', 'content': systemPrompt},
+        <String, String>{'role': 'user', 'content': prompt},
+      ],
+      'temperature': 0.7,
+      'max_tokens': 2000,
+    });
+
+    final content = response.data['choices'][0]['message']['content'] as String;
+    return _parseResponse(content);
+  }
+
+  static const _defaultSystemPrompt = '''你是一个专业的错题分析助手。你需要：
+1. 识别图片中的题目文本（或使用提供的文本）
+2. 分析题目，给出正确答案、解题步骤、知识点、错因分析、学习建议
+3. 生成举一反三的练习题
+
 返回格式必须严格如下（不要包含 markdown 代码块标记）：
 {
   "finalAnswer": "正确答案",
@@ -83,7 +218,10 @@ class AiAnalysisService {
   }
 
   String _buildPrompt(String correctedText, String subjectName) {
-    return '请分析以下$subjectName错题：\n\n$correctedText';
+    if (correctedText.isNotEmpty) {
+      return '请分析以下$subjectName错题：\n\n$correctedText';
+    }
+    return '请识别图片中的题目并分析。';
   }
 
   AnalysisResult _parseResponse(String content) {

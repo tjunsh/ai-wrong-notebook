@@ -18,6 +18,7 @@ import 'package:smart_wrong_notebook/src/features/settings/presentation/subject_
 import 'package:smart_wrong_notebook/src/features/settings/presentation/prompt_settings_screen.dart';
 import 'package:smart_wrong_notebook/src/features/settings/presentation/data_management_screen.dart';
 import 'package:smart_wrong_notebook/src/features/capture/presentation/question_correction_screen.dart';
+import 'package:smart_wrong_notebook/src/features/capture/presentation/image_crop_screen.dart';
 import 'package:smart_wrong_notebook/src/features/ocr/presentation/ocr_confirmation_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_loading_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_result_screen.dart';
@@ -59,6 +60,7 @@ void main() async {
           ]),
         ],
       ),
+      GoRoute(path: '/capture/crop', builder: (context, state) => const ImageCropScreen()),
       GoRoute(path: '/capture/correction', builder: (context, state) => const QuestionCorrectionScreen()),
       GoRoute(path: '/capture/ocr-confirmation', builder: (context, state) => const OcrConfirmationScreen()),
       GoRoute(path: '/analysis/loading', builder: (context, state) => const AnalysisLoadingScreen()),

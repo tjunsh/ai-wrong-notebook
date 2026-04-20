@@ -19,7 +19,7 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
   String? _errorMessage;
   int _step = 0;
 
-  final _steps = const ['正在分析题目...', '正在生成解析...', '正在生成练习题...', '即将完成...'];
+  final _steps = const ['正在识别图片...', '正在分析题目...', '正在生成结果...', '即将完成...'];
 
   @override
   void initState() {
@@ -54,6 +54,7 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
       final analysis = await service.analyzeQuestion(
         correctedText: current.correctedText,
         subjectName: current.subject.name,
+        imagePath: current.imagePath,
       );
 
       final updated = current.copyWith(

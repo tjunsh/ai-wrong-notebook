@@ -16,6 +16,8 @@ class OcrConfirmationScreen extends ConsumerStatefulWidget {
 class _OcrConfirmationScreenState extends ConsumerState<OcrConfirmationScreen> {
   late TextEditingController _textController;
   Subject _selectedSubject = Subject.math;
+  bool _ocrLoading = false;
+  String? _ocrError;
 
   @override
   void initState() {
@@ -97,16 +99,33 @@ class _OcrConfirmationScreenState extends ConsumerState<OcrConfirmationScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
                     Text('识别文本', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                    if (_textController.text.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: () {
-                          _textController.clear();
-                          setState(() {});
-                        },
-                        icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
-                        label: const Text('清除'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600, visualDensity: VisualDensity.compact),
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        if (_ocrLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 8),
+                            child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        else
+                          TextButton.icon(
+                            onPressed: _runOcr,
+                            icon: const Icon(CupertinoIcons.text_cursor, size: 16),
+                            label: const Text('识别文字'),
+                            style: TextButton.styleFrom(foregroundColor: const Color(0xFF6366F1), visualDensity: VisualDensity.compact),
+                          ),
+                        if (_textController.text.isNotEmpty)
+                          TextButton.icon(
+                            onPressed: () {
+                              _textController.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
+                            label: const Text('清除'),
+                            style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600, visualDensity: VisualDensity.compact),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -156,6 +175,38 @@ class _OcrConfirmationScreenState extends ConsumerState<OcrConfirmationScreen> {
       );
     }
     context.go('/analysis/loading');
+  }
+
+  Future<void> _runOcr() async {
+    final current = ref.read(currentQuestionProvider);
+    if (current == null) return;
+
+    setState(() {
+      _ocrLoading = true;
+      _ocrError = null;
+    });
+
+    try {
+      final ocr = ref.read(ocrServiceProvider);
+      final text = await ocr.recognizeImage(current.imagePath);
+
+      if (!mounted) return;
+      setState(() => _ocrLoading = false);
+
+      if (text.isNotEmpty) {
+        setState(() {
+          _textController.text = text;
+        });
+      } else {
+        setState(() => _ocrError = '未识别到文字，请手动输入');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ocrLoading = false;
+        _ocrError = '识别失败: $e';
+      });
+    }
   }
 
   void _showFullImage(BuildContext context, String imagePath) {
