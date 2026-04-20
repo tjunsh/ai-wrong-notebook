@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,21 +17,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   final _pages = const [
     _OnboardPage(
-      icon: Icons.camera_alt_outlined,
+      icon: CupertinoIcons.camera,
       title: '拍照录题',
       description: '快速拍照，智能识别',
       color: Color(0xFF6366F1),
       bg: Color(0xFFEEF2FF),
     ),
     _OnboardPage(
-      icon: Icons.psychology_outlined,
+      icon: CupertinoIcons.smiley,
       title: 'AI 解析',
       description: '深入分析，精准诊断',
       color: Color(0xFFD97706),
       bg: Color(0xFFFFFBEB),
     ),
     _OnboardPage(
-      icon: Icons.edit_note_outlined,
+      icon: CupertinoIcons.pencil,
       title: '举一反三',
       description: '针对性练习，巩固知识点',
       color: Color(0xFF16A34A),

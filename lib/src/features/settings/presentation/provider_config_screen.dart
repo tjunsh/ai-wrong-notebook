@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
@@ -48,7 +49,10 @@ class _ProviderConfigScreenState extends ConsumerState<ProviderConfigScreen> {
   Widget build(BuildContext context) {
     _loadConfig();
     return Scaffold(
-      appBar: AppBar(title: const Text('AI 服务配置')),
+      appBar: AppBar(
+        title: const Text('AI 服务配置'),
+        leading: IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => Navigator.of(context).pop()),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(

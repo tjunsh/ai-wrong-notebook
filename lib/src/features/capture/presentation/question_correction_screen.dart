@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -35,7 +36,13 @@ class _QuestionCorrectionScreenState extends ConsumerState<QuestionCorrectionScr
     final imagePath = current?.imagePath;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('校正与框选')),
+      appBar: AppBar(
+        title: const Text('校正与框选'),
+        leading: IconButton(
+          icon: const Icon(CupertinoIcons.chevron_left),
+          onPressed: () => context.go('/notebook'),
+        ),
+      ),
       body: Column(
         children: <Widget>[
           Expanded(
@@ -129,7 +136,7 @@ class _QuestionCorrectionScreenState extends ConsumerState<QuestionCorrectionScr
               ),
               child: Row(
                 children: <Widget>[
-                  const Icon(Icons.error_outline, size: 18, color: Color(0xFFEA580C)),
+                  const Icon(CupertinoIcons.exclamationmark_triangle, size: 18, color: Color(0xFFEA580C)),
                   const SizedBox(width: 8),
                   Expanded(child: Text(_ocrError!, style: const TextStyle(fontSize: 13, color: Color(0xFF9A3412)))),
                 ],

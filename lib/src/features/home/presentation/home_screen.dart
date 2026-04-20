@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
             context: context,
             builder: (_) => const CaptureEntrySheet(),
           ),
-          icon: const Icon(Icons.camera_alt_outlined),
+          icon: const Icon(CupertinoIcons.camera),
           label: const Text('拍照录题'),
           style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
         ),
@@ -166,7 +167,7 @@ class _RecentList extends StatelessWidget {
         ),
         child: const Column(
           children: <Widget>[
-            Icon(Icons.quiz_outlined, size: 48, color: Colors.grey),
+            Icon(CupertinoIcons.question, size: 48, color: Colors.grey),
             SizedBox(height: 12),
             Text('暂无错题，拍照开始添加', style: TextStyle(color: Colors.grey)),
           ],
@@ -214,7 +215,7 @@ class _RecentQuestionCard extends StatelessWidget {
             leading: CircleAvatar(
               radius: 18,
               backgroundColor: masteryColor.withValues(alpha: 0.1),
-              child: Icon(Icons.quiz_outlined, size: 16, color: masteryColor),
+              child: Icon(CupertinoIcons.question, size: 16, color: masteryColor),
             ),
             title: Text(
               question.correctedText,
@@ -223,7 +224,7 @@ class _RecentQuestionCard extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             subtitle: Text(question.subject.label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            trailing: const Icon(CupertinoIcons.chevron_right, color: Colors.grey),
             onTap: onTap,
           ),
         ),
@@ -274,7 +275,7 @@ class _ReviewBanner extends StatelessWidget {
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(color: const Color(0xFFFFEDD5), borderRadius: BorderRadius.circular(22)),
-                child: const Icon(Icons.refresh, color: Color(0xFFF97316), size: 22),
+                child: const Icon(CupertinoIcons.arrow_2_circlepath, color: Color(0xFFF97316), size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -286,7 +287,7 @@ class _ReviewBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Color(0xFFF97316), size: 22),
+              const Icon(CupertinoIcons.chevron_right, color: Color(0xFFF97316), size: 22),
             ],
           ),
         ),

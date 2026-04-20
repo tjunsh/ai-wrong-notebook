@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,7 +24,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
 
     if (current == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('练习')),
+        appBar: AppBar(title: const Text('练习'), leading: IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => context.go('/notebook'))),
         body: const Center(child: Text('未找到错题记录')),
       );
     }
@@ -37,12 +38,18 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
     final exercises = _exercises!;
     if (exercises.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('举一反三')),
+        appBar: AppBar(
+          title: const Text('举一反三'),
+          leading: IconButton(
+            icon: const Icon(CupertinoIcons.chevron_left),
+            onPressed: () => context.go('/analysis/result'),
+          ),
+        ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(Icons.quiz_outlined, size: 64, color: Colors.grey.shade300),
+              Icon(CupertinoIcons.question, size: 64, color: Colors.grey.shade300),
               const SizedBox(height: 16),
               const Text('暂无练习题', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
@@ -66,7 +73,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
       appBar: AppBar(
         title: Text('举一反三 ${_index + 1}/${exercises.length}'),
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(CupertinoIcons.xmark),
           onPressed: () => context.go('/notebook'),
         ),
       ),
@@ -139,7 +146,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                         Row(
                           children: <Widget>[
                             Icon(
-                              isCorrect ? Icons.check_circle : Icons.cancel,
+                              isCorrect ? CupertinoIcons.checkmark_circle : CupertinoIcons.xmark_circle,
                               color: isCorrect ? const Color(0xFF16A34A) : const Color(0xFFEA580C),
                               size: 20,
                             ),
@@ -179,7 +186,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                           setState(() => _index++);
                         }
                       },
-                      icon: Icon(isLast ? Icons.done : Icons.arrow_forward),
+                      icon: Icon(isLast ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.arrow_right),
                       label: Text(isLast ? '完成练习' : '下一题'),
                       style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
                     )
@@ -193,7 +200,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                               side: const BorderSide(color: Colors.red),
                               minimumSize: const Size(0, 48),
                             ),
-                            icon: const Icon(Icons.close),
+                            icon: const Icon(CupertinoIcons.xmark),
                             label: const Text('做错了'),
                           ),
                         ),
@@ -205,7 +212,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                               backgroundColor: const Color(0xFF16A34A),
                               minimumSize: const Size(0, 48),
                             ),
-                            icon: const Icon(Icons.check),
+                            icon: const Icon(CupertinoIcons.checkmark),
                             label: const Text('做对了'),
                           ),
                         ),

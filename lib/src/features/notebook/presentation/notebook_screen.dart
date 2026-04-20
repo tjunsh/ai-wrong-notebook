@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,7 +55,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
         titleSpacing: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_photo_alternate_outlined),
+            icon: const Icon(CupertinoIcons.camera),
             onPressed: () => context.go('/capture/correction'),
             tooltip: '添加错题',
           ),
@@ -69,10 +70,10 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: '搜索错题',
-                prefixIcon: const Icon(Icons.search, size: 20),
+                prefixIcon: const Icon(CupertinoIcons.search, size: 20),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
+                        icon: const Icon(CupertinoIcons.xmark_circle, size: 18),
                         onPressed: () {
                           _searchController.clear();
                           ref.read(searchQueryProvider.notifier).state = '';
@@ -139,7 +140,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Icon(Icons.quiz_outlined, size: 64, color: Colors.grey.shade300),
+                        Icon(CupertinoIcons.question, size: 64, color: Colors.grey.shade300),
                         const SizedBox(height: 16),
                         const Text('暂无错题', style: TextStyle(fontSize: 16)),
                         const SizedBox(height: 8),
@@ -237,7 +238,7 @@ class _QuestionCard extends StatelessWidget {
           color: Colors.red.shade50,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(Icons.delete_outline, color: Colors.red),
+        child: const Icon(CupertinoIcons.trash, color: Colors.red),
       ),
       child: Semantics(
         button: true,
@@ -308,7 +309,7 @@ class _QuestionCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: Colors.grey.shade300, size: 22),
+                  Icon(CupertinoIcons.chevron_right, color: Colors.grey.shade300, size: 22),
                 ],
               ),
             ),
@@ -345,17 +346,17 @@ class _QuestionCard extends StatelessWidget {
 
   ({IconData icon, Color color}) _subjectIcon(Subject subject) {
     switch (subject) {
-      case Subject.math: return (icon: Icons.functions, color: const Color(0xFF6366F1));
-      case Subject.english: return (icon: Icons.translate, color: const Color(0xFFD97706));
-      case Subject.chinese: return (icon: Icons.article_outlined, color: const Color(0xFF16A34A));
-      case Subject.physics: return (icon: Icons.science, color: const Color(0xFFEA580C));
-      case Subject.chemistry: return (icon: Icons.biotech, color: const Color(0xFF7C3AED));
-      case Subject.biology: return (icon: Icons.eco, color: const Color(0xFF16A34A));
-      case Subject.history: return (icon: Icons.history_edu, color: const Color(0xFFD97706));
-      case Subject.geography: return (icon: Icons.public, color: const Color(0xFF6366F1));
-      case Subject.politics: return (icon: Icons.account_balance, color: const Color(0xFF7C3AED));
-      case Subject.science: return (icon: Icons.science, color: const Color(0xFFEA580C));
-      case Subject.custom: return (icon: Icons.quiz_outlined, color: Colors.grey);
+      case Subject.math: return (icon: CupertinoIcons.function, color: const Color(0xFF6366F1));
+      case Subject.english: return (icon: CupertinoIcons.textformat_abc, color: const Color(0xFFD97706));
+      case Subject.chinese: return (icon: CupertinoIcons.doc_text, color: const Color(0xFF16A34A));
+      case Subject.physics: return (icon: CupertinoIcons.bolt, color: const Color(0xFFEA580C));
+      case Subject.chemistry: return (icon: CupertinoIcons.flame, color: const Color(0xFF7C3AED));
+      case Subject.biology: return (icon: CupertinoIcons.leaf_arrow_circlepath, color: const Color(0xFF16A34A));
+      case Subject.history: return (icon: CupertinoIcons.book, color: const Color(0xFFD97706));
+      case Subject.geography: return (icon: CupertinoIcons.globe, color: const Color(0xFF6366F1));
+      case Subject.politics: return (icon: CupertinoIcons.building_2_fill, color: const Color(0xFF7C3AED));
+      case Subject.science: return (icon: CupertinoIcons.lightbulb, color: const Color(0xFFEA580C));
+      case Subject.custom: return (icon: CupertinoIcons.question, color: Colors.grey);
     }
   }
 }

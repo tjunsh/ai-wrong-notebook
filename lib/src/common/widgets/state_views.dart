@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class ErrorView extends StatelessWidget {
@@ -27,7 +28,7 @@ class ErrorView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(32),
               ),
               child: Icon(
-                icon ?? Icons.error_outline,
+                icon ?? CupertinoIcons.exclamationmark_circle,
                 color: const Color(0xFFEA580C),
                 size: 32,
               ),
@@ -78,7 +79,7 @@ class EmptyView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(
-              icon ?? Icons.quiz_outlined,
+              icon ?? CupertinoIcons.question,
               size: 64,
               color: Colors.grey.shade300,
             ),

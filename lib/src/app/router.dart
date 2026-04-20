@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/core/constants/app_strings.dart';
@@ -97,11 +98,11 @@ class ScaffoldWithNavBar extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (int index) => navigationShell.goBranch(index),
-        destinations: const <NavigationDestination>[
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: AppStrings.homeTab),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: AppStrings.notebookTab),
-          NavigationDestination(icon: Icon(Icons.refresh_outlined), label: AppStrings.reviewTab),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: AppStrings.settingsTab),
+        destinations: <NavigationDestination>[
+          NavigationDestination(icon: Icon(CupertinoIcons.house), label: AppStrings.homeTab),
+          NavigationDestination(icon: Icon(CupertinoIcons.book), label: AppStrings.notebookTab),
+          NavigationDestination(icon: Icon(CupertinoIcons.arrow_2_circlepath), label: AppStrings.reviewTab),
+          NavigationDestination(icon: Icon(CupertinoIcons.gear), label: AppStrings.settingsTab),
         ],
       ),
     );

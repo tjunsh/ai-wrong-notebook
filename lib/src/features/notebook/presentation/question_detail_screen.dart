@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,12 +28,12 @@ class QuestionDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('错题详情'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(CupertinoIcons.chevron_left),
           onPressed: () => context.go('/notebook'),
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(CupertinoIcons.pencil),
             onPressed: () => _editQuestion(context, ref, current),
           ),
           PopupMenuButton<String>(
@@ -44,7 +45,7 @@ class QuestionDetailScreen extends ConsumerWidget {
                 value: 'delete',
                 child: Row(
                   children: [
-                    Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                    Icon(CupertinoIcons.trash, color: Colors.red, size: 20),
                     SizedBox(width: 8),
                     Text('删除', style: TextStyle(color: Colors.red)),
                   ],
@@ -117,7 +118,7 @@ class QuestionDetailScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: <Widget>[
-                  Icon(Icons.auto_awesome_outlined, size: 40, color: Colors.grey.shade300),
+                  Icon(CupertinoIcons.sparkles, size: 40, color: Colors.grey.shade300),
                   const SizedBox(height: 12),
                   const Text('暂无 AI 解析结果', style: TextStyle(fontSize: 15)),
                   const SizedBox(height: 8),
@@ -126,7 +127,7 @@ class QuestionDetailScreen extends ConsumerWidget {
                       ref.read(currentQuestionProvider.notifier).state = current;
                       context.go('/capture/correction');
                     },
-                    icon: const Icon(Icons.camera_alt_outlined),
+                    icon: const Icon(CupertinoIcons.camera),
                     label: const Text('去添加'),
                   ),
                 ],
@@ -137,7 +138,7 @@ class QuestionDetailScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             // Answer
             _InfoCard(
-              icon: Icons.check_circle,
+              icon: CupertinoIcons.checkmark_circle,
               iconColor: const Color(0xFF16A34A),
               bg: const Color(0xFFF0FDF4),
               border: const Color(0xFFBBF7D0),
@@ -149,7 +150,7 @@ class QuestionDetailScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             // Mistake reason
             _InfoCard(
-              icon: Icons.error_outline,
+              icon: CupertinoIcons.exclamationmark_triangle,
               iconColor: const Color(0xFFEA580C),
               bg: const Color(0xFFFFF7ED),
               border: const Color(0xFFFED7AA),
@@ -161,7 +162,7 @@ class QuestionDetailScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             // Study advice
             _InfoCard(
-              icon: Icons.lightbulb_outline,
+              icon: CupertinoIcons.lightbulb,
               iconColor: const Color(0xFFD97706),
               bg: const Color(0xFFFFFBEB),
               border: const Color(0xFFFDE68A),

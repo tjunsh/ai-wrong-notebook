@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,9 +82,9 @@ class ScaffoldWithNavBar extends StatelessWidget {
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (int index) => navigationShell.goBranch(index),
         destinations: const <NavigationDestination>[
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: '首页'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: '错题本'),
-          NavigationDestination(icon: Icon(Icons.refresh_outlined), label: '复习'),
+          NavigationDestination(icon: Icon(CupertinoIcons.house), label: '首页'),
+          NavigationDestination(icon: Icon(CupertinoIcons.book), label: '错题本'),
+          NavigationDestination(icon: Icon(CupertinoIcons.arrow_2_circlepath), label: '复习'),
         ],
       ),
     );

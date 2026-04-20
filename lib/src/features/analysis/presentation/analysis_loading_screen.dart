@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -70,10 +71,17 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('AI 解析'),
+        leading: IconButton(
+          icon: const Icon(CupertinoIcons.chevron_left),
+          onPressed: () => context.go('/capture/ocr-confirmation'),
+        ),
+      ),
       body: _errorMessage != null
           ? ErrorView(
               message: _errorMessage!,
-              icon: Icons.cloud_off_outlined,
+              icon: CupertinoIcons.cloud,
               onRetry: _retry,
             )
           : _LoadingView(step: _step, steps: _steps),
@@ -136,7 +144,7 @@ class _LoadingViewState extends State<_LoadingView> with SingleTickerProviderSta
                 animation: _controller,
                 builder: (_, __) => Transform.rotate(
                   angle: _controller.value * 2 * 3.14159,
-                  child: const Icon(Icons.psychology_outlined, size: 44, color: Color(0xFF6366F1)),
+                  child: const Icon(CupertinoIcons.smiley, size: 44, color: Color(0xFF6366F1)),
                 ),
               ),
             ),

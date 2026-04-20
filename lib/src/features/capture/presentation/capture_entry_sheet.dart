@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +29,7 @@ class CaptureEntrySheet extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             _EntryOption(
-              icon: Icons.camera_alt_outlined,
+              icon: CupertinoIcons.camera,
               iconColor: const Color(0xFF6366F1),
               iconBg: const Color(0xFFEEF2FF),
               label: '拍照',
@@ -37,7 +38,7 @@ class CaptureEntrySheet extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             _EntryOption(
-              icon: Icons.photo_library_outlined,
+              icon: CupertinoIcons.photo,
               iconColor: const Color(0xFFD97706),
               iconBg: const Color(0xFFFFFBEB),
               label: '相册',
@@ -115,7 +116,7 @@ class _EntryOption extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 22, color: Colors.grey.shade300),
+            Icon(CupertinoIcons.chevron_right, size: 22, color: Colors.grey.shade300),
           ],
         ),
       ),

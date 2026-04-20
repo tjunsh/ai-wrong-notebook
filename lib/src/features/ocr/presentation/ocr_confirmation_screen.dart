@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,7 +37,13 @@ class _OcrConfirmationScreenState extends ConsumerState<OcrConfirmationScreen> {
     final hasImage = current?.imagePath != null && File(current!.imagePath).existsSync();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('识别确认')),
+      appBar: AppBar(
+        title: const Text('识别确认'),
+        leading: IconButton(
+          icon: const Icon(CupertinoIcons.chevron_left),
+          onPressed: () => context.go('/capture/correction'),
+        ),
+      ),
       body: Column(
         children: <Widget>[
           if (hasImage)
@@ -96,7 +103,7 @@ class _OcrConfirmationScreenState extends ConsumerState<OcrConfirmationScreen> {
                           _textController.clear();
                           setState(() {});
                         },
-                        icon: const Icon(Icons.clear, size: 16),
+                        icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
                         label: const Text('清除'),
                         style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600, visualDensity: VisualDensity.compact),
                       ),

@@ -2,12 +2,10 @@ import 'package:drift/drift.dart';
 import 'question_records.dart';
 
 class ReviewLogs extends Table {
-  TextColumn get id => text()();
-  TextColumn get questionRecordId => text().references(QuestionRecords, #id)();
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get questionId => text().references(QuestionRecords, #id)();
   DateTimeColumn get reviewedAt => dateTime()();
-  TextColumn get result => text()();
-  TextColumn get masteryAfter => text()();
-
-  @override
-  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+  BoolColumn get wasCorrect => boolean()();
+  IntColumn get responseTimeMs => integer().nullable()();
+  TextColumn get notes => text().nullable()();
 }

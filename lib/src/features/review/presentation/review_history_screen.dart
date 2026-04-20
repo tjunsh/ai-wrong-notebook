@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,7 +39,7 @@ class ReviewHistoryScreen extends ConsumerWidget {
         leading: CircleAvatar(
           backgroundColor: (isMastered ? Colors.green : Colors.orange).withValues(alpha: 0.1),
           child: Icon(
-            isMastered ? Icons.check_circle : Icons.refresh,
+            isMastered ? CupertinoIcons.checkmark_circle : CupertinoIcons.arrow_2_circlepath,
             color: isMastered ? Colors.green : Colors.orange,
             size: 18,
           ),
@@ -106,7 +107,7 @@ class _EmptyHistoryCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(Icons.history, size: 64, color: Colors.grey.shade300),
+            Icon(CupertinoIcons.clock, size: 64, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             const Text('暂无复习记录', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 8),

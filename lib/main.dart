@@ -1,9 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
-import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_settings_repository.dart';
-import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/drift_settings_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/drift_question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/local/app_database.dart';
 import 'package:smart_wrong_notebook/src/app/theme/app_theme.dart';
 import 'package:smart_wrong_notebook/src/features/home/presentation/home_screen.dart';
 import 'package:smart_wrong_notebook/src/features/notebook/presentation/notebook_screen.dart';
@@ -27,8 +29,9 @@ import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final settingsRepo = SharedPrefsSettingsRepository();
-  final questionRepo = SharedPrefsQuestionRepository();
+  final db = AppDatabase();
+  final settingsRepo = DriftSettingsRepository(db);
+  final questionRepo = DriftQuestionRepository(db);
 
   final router = GoRouter(
     initialLocation: '/',
@@ -84,13 +87,15 @@ void main() async {
         aiAnalysisServiceProvider.overrideWithValue(AiAnalysisService.fake()),
         imageStorageServiceProvider.overrideWithValue(ImageStorageService()),
       ],
-      child: MaterialApp.router(
-        title: '智能错题本',
-        theme: buildLightTheme(),
-        darkTheme: buildDarkTheme(),
-        themeMode: ThemeMode.light,
-        routerConfig: router,
-        debugShowCheckedModeBanner: false,
+      child: Consumer(
+        builder: (context, ref, _) => MaterialApp.router(
+          title: '智能错题本',
+          theme: buildLightTheme(),
+          darkTheme: buildDarkTheme(),
+          themeMode: ref.watch(themeModeProvider),
+          routerConfig: router,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     ),
   );
@@ -108,10 +113,26 @@ class ScaffoldWithNavBar extends StatelessWidget {
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (int index) => navigationShell.goBranch(index),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: '首页'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: '错题本'),
-          NavigationDestination(icon: Icon(Icons.refresh_outlined), label: '复习'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: '设置'),
+          NavigationDestination(
+            icon: Icon(CupertinoIcons.house),
+            selectedIcon: Icon(CupertinoIcons.house_fill),
+            label: '首页',
+          ),
+          NavigationDestination(
+            icon: Icon(CupertinoIcons.book),
+            selectedIcon: Icon(CupertinoIcons.book_fill),
+            label: '错题本',
+          ),
+          NavigationDestination(
+            icon: Icon(CupertinoIcons.arrow_2_circlepath),
+            selectedIcon: Icon(CupertinoIcons.arrow_2_circlepath),
+            label: '复习',
+          ),
+          NavigationDestination(
+            icon: Icon(CupertinoIcons.gear),
+            selectedIcon: Icon(CupertinoIcons.gear_solid),
+            label: '设置',
+          ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,14 +22,17 @@ class DataManagementScreen extends ConsumerWidget {
     final questionsAsync = ref.watch(questionListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('数据管理')),
+      appBar: AppBar(
+        title: const Text('数据管理'),
+        leading: IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => Navigator.of(context).pop()),
+      ),
       body: questionsAsync.when(
         data: (questions) => ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             Card(
               child: ListTile(
-                leading: const Icon(Icons.storage_outlined),
+                leading: const Icon(CupertinoIcons.tray),
                 title: const Text('题库总量'),
                 trailing: Text('${questions.length} 题', style: Theme.of(context).textTheme.titleMedium),
               ),
@@ -36,30 +40,30 @@ class DataManagementScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             Card(
               child: ListTile(
-                leading: const Icon(Icons.upload_outlined),
+                leading: const Icon(CupertinoIcons.arrow_up),
                 title: const Text('导入错题'),
                 subtitle: const Text('从 JSON 文件导入错题记录'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_right),
                 onTap: () => _importQuestions(context, ref),
               ),
             ),
             const SizedBox(height: 8),
             Card(
               child: ListTile(
-                leading: const Icon(Icons.download_outlined),
+                leading: const Icon(CupertinoIcons.arrow_down),
                 title: const Text('导出当前题库'),
                 subtitle: const Text('导出所有错题为 JSON 文件，可分享'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_right),
                 onTap: questions.isEmpty ? null : () => _exportQuestions(context, questions),
               ),
             ),
             const SizedBox(height: 8),
             Card(
               child: ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                leading: const Icon(CupertinoIcons.trash, color: Colors.red),
                 title: const Text('清空所有数据', style: TextStyle(color: Colors.red)),
                 subtitle: const Text('删除所有错题记录，不可恢复'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_right),
                 onTap: () => _confirmClearAll(context, ref, questions.length),
               ),
             ),

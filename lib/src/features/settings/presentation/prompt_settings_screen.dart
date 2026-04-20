@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
@@ -48,7 +49,10 @@ class _PromptSettingsScreenState extends ConsumerState<PromptSettingsScreen> {
   Widget build(BuildContext context) {
     _load();
     return Scaffold(
-      appBar: AppBar(title: const Text('提示词设置')),
+      appBar: AppBar(
+        title: const Text('提示词设置'),
+        leading: IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => Navigator.of(context).pop()),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(

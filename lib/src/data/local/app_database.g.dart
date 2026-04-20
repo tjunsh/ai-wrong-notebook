@@ -14,23 +14,23 @@ class $QuestionRecordsTable extends QuestionRecords
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _imagePathMeta =
-      const VerificationMeta('imagePath');
-  @override
-  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
-      'image_path', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _subjectMeta =
       const VerificationMeta('subject');
   @override
   late final GeneratedColumn<String> subject = GeneratedColumn<String>(
       'subject', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _recognizedTextMeta =
-      const VerificationMeta('recognizedText');
+  static const VerificationMeta _originalImagePathMeta =
+      const VerificationMeta('originalImagePath');
   @override
-  late final GeneratedColumn<String> recognizedText = GeneratedColumn<String>(
-      'recognized_text', aliasedName, false,
+  late final GeneratedColumn<String> originalImagePath =
+      GeneratedColumn<String>('original_image_path', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _originalTextMeta =
+      const VerificationMeta('originalText');
+  @override
+  late final GeneratedColumn<String> originalText = GeneratedColumn<String>(
+      'original_text', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _correctedTextMeta =
       const VerificationMeta('correctedText');
@@ -38,42 +38,18 @@ class $QuestionRecordsTable extends QuestionRecords
   late final GeneratedColumn<String> correctedText = GeneratedColumn<String>(
       'corrected_text', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _tagsJsonMeta =
-      const VerificationMeta('tagsJson');
-  @override
-  late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
-      'tags_json', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('[]'));
-  static const VerificationMeta _contentStatusMeta =
-      const VerificationMeta('contentStatus');
-  @override
-  late final GeneratedColumn<String> contentStatus = GeneratedColumn<String>(
-      'content_status', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _masteryLevelMeta =
       const VerificationMeta('masteryLevel');
   @override
   late final GeneratedColumn<String> masteryLevel = GeneratedColumn<String>(
       'mastery_level', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _analysisJsonMeta =
-      const VerificationMeta('analysisJson');
+  static const VerificationMeta _contentStatusMeta =
+      const VerificationMeta('contentStatus');
   @override
-  late final GeneratedColumn<String> analysisJson = GeneratedColumn<String>(
-      'analysis_json', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _isFavoriteMeta =
-      const VerificationMeta('isFavorite');
-  @override
-  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
-      'is_favorite', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("is_favorite" IN (0, 1))'),
-      defaultValue: const Constant(false));
+  late final GeneratedColumn<String> contentStatus = GeneratedColumn<String>(
+      'content_status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _reviewCountMeta =
       const VerificationMeta('reviewCount');
   @override
@@ -82,6 +58,12 @@ class $QuestionRecordsTable extends QuestionRecords
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _nextReviewAtMeta =
+      const VerificationMeta('nextReviewAt');
+  @override
+  late final GeneratedColumn<DateTime> nextReviewAt = GeneratedColumn<DateTime>(
+      'next_review_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -94,28 +76,34 @@ class $QuestionRecordsTable extends QuestionRecords
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _lastReviewedAtMeta =
-      const VerificationMeta('lastReviewedAt');
+  static const VerificationMeta _aiAnalysisJsonMeta =
+      const VerificationMeta('aiAnalysisJson');
   @override
-  late final GeneratedColumn<DateTime> lastReviewedAt =
-      GeneratedColumn<DateTime>('last_reviewed_at', aliasedName, true,
-          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  late final GeneratedColumn<String> aiAnalysisJson = GeneratedColumn<String>(
+      'ai_analysis_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tagsMeta = const VerificationMeta('tags');
+  @override
+  late final GeneratedColumn<String> tags = GeneratedColumn<String>(
+      'tags', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
   @override
   List<GeneratedColumn> get $columns => [
         id,
-        imagePath,
         subject,
-        recognizedText,
+        originalImagePath,
+        originalText,
         correctedText,
-        tagsJson,
-        contentStatus,
         masteryLevel,
-        analysisJson,
-        isFavorite,
+        contentStatus,
         reviewCount,
+        nextReviewAt,
         createdAt,
         updatedAt,
-        lastReviewedAt
+        aiAnalysisJson,
+        tags
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -132,25 +120,25 @@ class $QuestionRecordsTable extends QuestionRecords
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('image_path')) {
-      context.handle(_imagePathMeta,
-          imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta));
-    } else if (isInserting) {
-      context.missing(_imagePathMeta);
-    }
     if (data.containsKey('subject')) {
       context.handle(_subjectMeta,
           subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta));
     } else if (isInserting) {
       context.missing(_subjectMeta);
     }
-    if (data.containsKey('recognized_text')) {
+    if (data.containsKey('original_image_path')) {
       context.handle(
-          _recognizedTextMeta,
-          recognizedText.isAcceptableOrUnknown(
-              data['recognized_text']!, _recognizedTextMeta));
+          _originalImagePathMeta,
+          originalImagePath.isAcceptableOrUnknown(
+              data['original_image_path']!, _originalImagePathMeta));
+    }
+    if (data.containsKey('original_text')) {
+      context.handle(
+          _originalTextMeta,
+          originalText.isAcceptableOrUnknown(
+              data['original_text']!, _originalTextMeta));
     } else if (isInserting) {
-      context.missing(_recognizedTextMeta);
+      context.missing(_originalTextMeta);
     }
     if (data.containsKey('corrected_text')) {
       context.handle(
@@ -160,9 +148,13 @@ class $QuestionRecordsTable extends QuestionRecords
     } else if (isInserting) {
       context.missing(_correctedTextMeta);
     }
-    if (data.containsKey('tags_json')) {
-      context.handle(_tagsJsonMeta,
-          tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta));
+    if (data.containsKey('mastery_level')) {
+      context.handle(
+          _masteryLevelMeta,
+          masteryLevel.isAcceptableOrUnknown(
+              data['mastery_level']!, _masteryLevelMeta));
+    } else if (isInserting) {
+      context.missing(_masteryLevelMeta);
     }
     if (data.containsKey('content_status')) {
       context.handle(
@@ -172,31 +164,17 @@ class $QuestionRecordsTable extends QuestionRecords
     } else if (isInserting) {
       context.missing(_contentStatusMeta);
     }
-    if (data.containsKey('mastery_level')) {
-      context.handle(
-          _masteryLevelMeta,
-          masteryLevel.isAcceptableOrUnknown(
-              data['mastery_level']!, _masteryLevelMeta));
-    } else if (isInserting) {
-      context.missing(_masteryLevelMeta);
-    }
-    if (data.containsKey('analysis_json')) {
-      context.handle(
-          _analysisJsonMeta,
-          analysisJson.isAcceptableOrUnknown(
-              data['analysis_json']!, _analysisJsonMeta));
-    }
-    if (data.containsKey('is_favorite')) {
-      context.handle(
-          _isFavoriteMeta,
-          isFavorite.isAcceptableOrUnknown(
-              data['is_favorite']!, _isFavoriteMeta));
-    }
     if (data.containsKey('review_count')) {
       context.handle(
           _reviewCountMeta,
           reviewCount.isAcceptableOrUnknown(
               data['review_count']!, _reviewCountMeta));
+    }
+    if (data.containsKey('next_review_at')) {
+      context.handle(
+          _nextReviewAtMeta,
+          nextReviewAt.isAcceptableOrUnknown(
+              data['next_review_at']!, _nextReviewAtMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -210,11 +188,15 @@ class $QuestionRecordsTable extends QuestionRecords
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
-    if (data.containsKey('last_reviewed_at')) {
+    if (data.containsKey('ai_analysis_json')) {
       context.handle(
-          _lastReviewedAtMeta,
-          lastReviewedAt.isAcceptableOrUnknown(
-              data['last_reviewed_at']!, _lastReviewedAtMeta));
+          _aiAnalysisJsonMeta,
+          aiAnalysisJson.isAcceptableOrUnknown(
+              data['ai_analysis_json']!, _aiAnalysisJsonMeta));
+    }
+    if (data.containsKey('tags')) {
+      context.handle(
+          _tagsMeta, tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta));
     }
     return context;
   }
@@ -227,32 +209,30 @@ class $QuestionRecordsTable extends QuestionRecords
     return QuestionRecord(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      imagePath: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}image_path'])!,
       subject: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}subject'])!,
-      recognizedText: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}recognized_text'])!,
+      originalImagePath: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}original_image_path']),
+      originalText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}original_text'])!,
       correctedText: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}corrected_text'])!,
-      tagsJson: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}tags_json'])!,
-      contentStatus: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}content_status'])!,
       masteryLevel: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}mastery_level'])!,
-      analysisJson: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}analysis_json']),
-      isFavorite: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
+      contentStatus: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content_status'])!,
       reviewCount: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}review_count'])!,
+      nextReviewAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}next_review_at']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
-      lastReviewedAt: attachedDatabase.typeMapping.read(
-          DriftSqlType.dateTime, data['${effectivePrefix}last_reviewed_at']),
+      aiAnalysisJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}ai_analysis_json']),
+      tags: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tags'])!,
     );
   }
 
@@ -264,78 +244,78 @@ class $QuestionRecordsTable extends QuestionRecords
 
 class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
   final String id;
-  final String imagePath;
   final String subject;
-  final String recognizedText;
+  final String? originalImagePath;
+  final String originalText;
   final String correctedText;
-  final String tagsJson;
-  final String contentStatus;
   final String masteryLevel;
-  final String? analysisJson;
-  final bool isFavorite;
+  final String contentStatus;
   final int reviewCount;
+  final DateTime? nextReviewAt;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final DateTime? lastReviewedAt;
+  final String? aiAnalysisJson;
+  final String tags;
   const QuestionRecord(
       {required this.id,
-      required this.imagePath,
       required this.subject,
-      required this.recognizedText,
+      this.originalImagePath,
+      required this.originalText,
       required this.correctedText,
-      required this.tagsJson,
-      required this.contentStatus,
       required this.masteryLevel,
-      this.analysisJson,
-      required this.isFavorite,
+      required this.contentStatus,
       required this.reviewCount,
+      this.nextReviewAt,
       required this.createdAt,
       required this.updatedAt,
-      this.lastReviewedAt});
+      this.aiAnalysisJson,
+      required this.tags});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['image_path'] = Variable<String>(imagePath);
     map['subject'] = Variable<String>(subject);
-    map['recognized_text'] = Variable<String>(recognizedText);
-    map['corrected_text'] = Variable<String>(correctedText);
-    map['tags_json'] = Variable<String>(tagsJson);
-    map['content_status'] = Variable<String>(contentStatus);
-    map['mastery_level'] = Variable<String>(masteryLevel);
-    if (!nullToAbsent || analysisJson != null) {
-      map['analysis_json'] = Variable<String>(analysisJson);
+    if (!nullToAbsent || originalImagePath != null) {
+      map['original_image_path'] = Variable<String>(originalImagePath);
     }
-    map['is_favorite'] = Variable<bool>(isFavorite);
+    map['original_text'] = Variable<String>(originalText);
+    map['corrected_text'] = Variable<String>(correctedText);
+    map['mastery_level'] = Variable<String>(masteryLevel);
+    map['content_status'] = Variable<String>(contentStatus);
     map['review_count'] = Variable<int>(reviewCount);
+    if (!nullToAbsent || nextReviewAt != null) {
+      map['next_review_at'] = Variable<DateTime>(nextReviewAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
-    if (!nullToAbsent || lastReviewedAt != null) {
-      map['last_reviewed_at'] = Variable<DateTime>(lastReviewedAt);
+    if (!nullToAbsent || aiAnalysisJson != null) {
+      map['ai_analysis_json'] = Variable<String>(aiAnalysisJson);
     }
+    map['tags'] = Variable<String>(tags);
     return map;
   }
 
   QuestionRecordsCompanion toCompanion(bool nullToAbsent) {
     return QuestionRecordsCompanion(
       id: Value(id),
-      imagePath: Value(imagePath),
       subject: Value(subject),
-      recognizedText: Value(recognizedText),
-      correctedText: Value(correctedText),
-      tagsJson: Value(tagsJson),
-      contentStatus: Value(contentStatus),
-      masteryLevel: Value(masteryLevel),
-      analysisJson: analysisJson == null && nullToAbsent
+      originalImagePath: originalImagePath == null && nullToAbsent
           ? const Value.absent()
-          : Value(analysisJson),
-      isFavorite: Value(isFavorite),
+          : Value(originalImagePath),
+      originalText: Value(originalText),
+      correctedText: Value(correctedText),
+      masteryLevel: Value(masteryLevel),
+      contentStatus: Value(contentStatus),
       reviewCount: Value(reviewCount),
+      nextReviewAt: nextReviewAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextReviewAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
-      lastReviewedAt: lastReviewedAt == null && nullToAbsent
+      aiAnalysisJson: aiAnalysisJson == null && nullToAbsent
           ? const Value.absent()
-          : Value(lastReviewedAt),
+          : Value(aiAnalysisJson),
+      tags: Value(tags),
     );
   }
 
@@ -344,19 +324,19 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return QuestionRecord(
       id: serializer.fromJson<String>(json['id']),
-      imagePath: serializer.fromJson<String>(json['imagePath']),
       subject: serializer.fromJson<String>(json['subject']),
-      recognizedText: serializer.fromJson<String>(json['recognizedText']),
+      originalImagePath:
+          serializer.fromJson<String?>(json['originalImagePath']),
+      originalText: serializer.fromJson<String>(json['originalText']),
       correctedText: serializer.fromJson<String>(json['correctedText']),
-      tagsJson: serializer.fromJson<String>(json['tagsJson']),
-      contentStatus: serializer.fromJson<String>(json['contentStatus']),
       masteryLevel: serializer.fromJson<String>(json['masteryLevel']),
-      analysisJson: serializer.fromJson<String?>(json['analysisJson']),
-      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      contentStatus: serializer.fromJson<String>(json['contentStatus']),
       reviewCount: serializer.fromJson<int>(json['reviewCount']),
+      nextReviewAt: serializer.fromJson<DateTime?>(json['nextReviewAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      lastReviewedAt: serializer.fromJson<DateTime?>(json['lastReviewedAt']),
+      aiAnalysisJson: serializer.fromJson<String?>(json['aiAnalysisJson']),
+      tags: serializer.fromJson<String>(json['tags']),
     );
   }
   @override
@@ -364,85 +344,84 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'imagePath': serializer.toJson<String>(imagePath),
       'subject': serializer.toJson<String>(subject),
-      'recognizedText': serializer.toJson<String>(recognizedText),
+      'originalImagePath': serializer.toJson<String?>(originalImagePath),
+      'originalText': serializer.toJson<String>(originalText),
       'correctedText': serializer.toJson<String>(correctedText),
-      'tagsJson': serializer.toJson<String>(tagsJson),
-      'contentStatus': serializer.toJson<String>(contentStatus),
       'masteryLevel': serializer.toJson<String>(masteryLevel),
-      'analysisJson': serializer.toJson<String?>(analysisJson),
-      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'contentStatus': serializer.toJson<String>(contentStatus),
       'reviewCount': serializer.toJson<int>(reviewCount),
+      'nextReviewAt': serializer.toJson<DateTime?>(nextReviewAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'lastReviewedAt': serializer.toJson<DateTime?>(lastReviewedAt),
+      'aiAnalysisJson': serializer.toJson<String?>(aiAnalysisJson),
+      'tags': serializer.toJson<String>(tags),
     };
   }
 
   QuestionRecord copyWith(
           {String? id,
-          String? imagePath,
           String? subject,
-          String? recognizedText,
+          Value<String?> originalImagePath = const Value.absent(),
+          String? originalText,
           String? correctedText,
-          String? tagsJson,
-          String? contentStatus,
           String? masteryLevel,
-          Value<String?> analysisJson = const Value.absent(),
-          bool? isFavorite,
+          String? contentStatus,
           int? reviewCount,
+          Value<DateTime?> nextReviewAt = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
-          Value<DateTime?> lastReviewedAt = const Value.absent()}) =>
+          Value<String?> aiAnalysisJson = const Value.absent(),
+          String? tags}) =>
       QuestionRecord(
         id: id ?? this.id,
-        imagePath: imagePath ?? this.imagePath,
         subject: subject ?? this.subject,
-        recognizedText: recognizedText ?? this.recognizedText,
+        originalImagePath: originalImagePath.present
+            ? originalImagePath.value
+            : this.originalImagePath,
+        originalText: originalText ?? this.originalText,
         correctedText: correctedText ?? this.correctedText,
-        tagsJson: tagsJson ?? this.tagsJson,
-        contentStatus: contentStatus ?? this.contentStatus,
         masteryLevel: masteryLevel ?? this.masteryLevel,
-        analysisJson:
-            analysisJson.present ? analysisJson.value : this.analysisJson,
-        isFavorite: isFavorite ?? this.isFavorite,
+        contentStatus: contentStatus ?? this.contentStatus,
         reviewCount: reviewCount ?? this.reviewCount,
+        nextReviewAt:
+            nextReviewAt.present ? nextReviewAt.value : this.nextReviewAt,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
-        lastReviewedAt:
-            lastReviewedAt.present ? lastReviewedAt.value : this.lastReviewedAt,
+        aiAnalysisJson:
+            aiAnalysisJson.present ? aiAnalysisJson.value : this.aiAnalysisJson,
+        tags: tags ?? this.tags,
       );
   QuestionRecord copyWithCompanion(QuestionRecordsCompanion data) {
     return QuestionRecord(
       id: data.id.present ? data.id.value : this.id,
-      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       subject: data.subject.present ? data.subject.value : this.subject,
-      recognizedText: data.recognizedText.present
-          ? data.recognizedText.value
-          : this.recognizedText,
+      originalImagePath: data.originalImagePath.present
+          ? data.originalImagePath.value
+          : this.originalImagePath,
+      originalText: data.originalText.present
+          ? data.originalText.value
+          : this.originalText,
       correctedText: data.correctedText.present
           ? data.correctedText.value
           : this.correctedText,
-      tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
-      contentStatus: data.contentStatus.present
-          ? data.contentStatus.value
-          : this.contentStatus,
       masteryLevel: data.masteryLevel.present
           ? data.masteryLevel.value
           : this.masteryLevel,
-      analysisJson: data.analysisJson.present
-          ? data.analysisJson.value
-          : this.analysisJson,
-      isFavorite:
-          data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
+      contentStatus: data.contentStatus.present
+          ? data.contentStatus.value
+          : this.contentStatus,
       reviewCount:
           data.reviewCount.present ? data.reviewCount.value : this.reviewCount,
+      nextReviewAt: data.nextReviewAt.present
+          ? data.nextReviewAt.value
+          : this.nextReviewAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
-      lastReviewedAt: data.lastReviewedAt.present
-          ? data.lastReviewedAt.value
-          : this.lastReviewedAt,
+      aiAnalysisJson: data.aiAnalysisJson.present
+          ? data.aiAnalysisJson.value
+          : this.aiAnalysisJson,
+      tags: data.tags.present ? data.tags.value : this.tags,
     );
   }
 
@@ -450,19 +429,18 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
   String toString() {
     return (StringBuffer('QuestionRecord(')
           ..write('id: $id, ')
-          ..write('imagePath: $imagePath, ')
           ..write('subject: $subject, ')
-          ..write('recognizedText: $recognizedText, ')
+          ..write('originalImagePath: $originalImagePath, ')
+          ..write('originalText: $originalText, ')
           ..write('correctedText: $correctedText, ')
-          ..write('tagsJson: $tagsJson, ')
-          ..write('contentStatus: $contentStatus, ')
           ..write('masteryLevel: $masteryLevel, ')
-          ..write('analysisJson: $analysisJson, ')
-          ..write('isFavorite: $isFavorite, ')
+          ..write('contentStatus: $contentStatus, ')
           ..write('reviewCount: $reviewCount, ')
+          ..write('nextReviewAt: $nextReviewAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('lastReviewedAt: $lastReviewedAt')
+          ..write('aiAnalysisJson: $aiAnalysisJson, ')
+          ..write('tags: $tags')
           ..write(')'))
         .toString();
   }
@@ -470,164 +448,154 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
   @override
   int get hashCode => Object.hash(
       id,
-      imagePath,
       subject,
-      recognizedText,
+      originalImagePath,
+      originalText,
       correctedText,
-      tagsJson,
-      contentStatus,
       masteryLevel,
-      analysisJson,
-      isFavorite,
+      contentStatus,
       reviewCount,
+      nextReviewAt,
       createdAt,
       updatedAt,
-      lastReviewedAt);
+      aiAnalysisJson,
+      tags);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is QuestionRecord &&
           other.id == this.id &&
-          other.imagePath == this.imagePath &&
           other.subject == this.subject &&
-          other.recognizedText == this.recognizedText &&
+          other.originalImagePath == this.originalImagePath &&
+          other.originalText == this.originalText &&
           other.correctedText == this.correctedText &&
-          other.tagsJson == this.tagsJson &&
-          other.contentStatus == this.contentStatus &&
           other.masteryLevel == this.masteryLevel &&
-          other.analysisJson == this.analysisJson &&
-          other.isFavorite == this.isFavorite &&
+          other.contentStatus == this.contentStatus &&
           other.reviewCount == this.reviewCount &&
+          other.nextReviewAt == this.nextReviewAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.lastReviewedAt == this.lastReviewedAt);
+          other.aiAnalysisJson == this.aiAnalysisJson &&
+          other.tags == this.tags);
 }
 
 class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
   final Value<String> id;
-  final Value<String> imagePath;
   final Value<String> subject;
-  final Value<String> recognizedText;
+  final Value<String?> originalImagePath;
+  final Value<String> originalText;
   final Value<String> correctedText;
-  final Value<String> tagsJson;
-  final Value<String> contentStatus;
   final Value<String> masteryLevel;
-  final Value<String?> analysisJson;
-  final Value<bool> isFavorite;
+  final Value<String> contentStatus;
   final Value<int> reviewCount;
+  final Value<DateTime?> nextReviewAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
-  final Value<DateTime?> lastReviewedAt;
+  final Value<String?> aiAnalysisJson;
+  final Value<String> tags;
   final Value<int> rowid;
   const QuestionRecordsCompanion({
     this.id = const Value.absent(),
-    this.imagePath = const Value.absent(),
     this.subject = const Value.absent(),
-    this.recognizedText = const Value.absent(),
+    this.originalImagePath = const Value.absent(),
+    this.originalText = const Value.absent(),
     this.correctedText = const Value.absent(),
-    this.tagsJson = const Value.absent(),
-    this.contentStatus = const Value.absent(),
     this.masteryLevel = const Value.absent(),
-    this.analysisJson = const Value.absent(),
-    this.isFavorite = const Value.absent(),
+    this.contentStatus = const Value.absent(),
     this.reviewCount = const Value.absent(),
+    this.nextReviewAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-    this.lastReviewedAt = const Value.absent(),
+    this.aiAnalysisJson = const Value.absent(),
+    this.tags = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QuestionRecordsCompanion.insert({
     required String id,
-    required String imagePath,
     required String subject,
-    required String recognizedText,
+    this.originalImagePath = const Value.absent(),
+    required String originalText,
     required String correctedText,
-    this.tagsJson = const Value.absent(),
-    required String contentStatus,
     required String masteryLevel,
-    this.analysisJson = const Value.absent(),
-    this.isFavorite = const Value.absent(),
+    required String contentStatus,
     this.reviewCount = const Value.absent(),
+    this.nextReviewAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
-    this.lastReviewedAt = const Value.absent(),
+    this.aiAnalysisJson = const Value.absent(),
+    this.tags = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        imagePath = Value(imagePath),
         subject = Value(subject),
-        recognizedText = Value(recognizedText),
+        originalText = Value(originalText),
         correctedText = Value(correctedText),
-        contentStatus = Value(contentStatus),
         masteryLevel = Value(masteryLevel),
+        contentStatus = Value(contentStatus),
         createdAt = Value(createdAt),
         updatedAt = Value(updatedAt);
   static Insertable<QuestionRecord> custom({
     Expression<String>? id,
-    Expression<String>? imagePath,
     Expression<String>? subject,
-    Expression<String>? recognizedText,
+    Expression<String>? originalImagePath,
+    Expression<String>? originalText,
     Expression<String>? correctedText,
-    Expression<String>? tagsJson,
-    Expression<String>? contentStatus,
     Expression<String>? masteryLevel,
-    Expression<String>? analysisJson,
-    Expression<bool>? isFavorite,
+    Expression<String>? contentStatus,
     Expression<int>? reviewCount,
+    Expression<DateTime>? nextReviewAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
-    Expression<DateTime>? lastReviewedAt,
+    Expression<String>? aiAnalysisJson,
+    Expression<String>? tags,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (imagePath != null) 'image_path': imagePath,
       if (subject != null) 'subject': subject,
-      if (recognizedText != null) 'recognized_text': recognizedText,
+      if (originalImagePath != null) 'original_image_path': originalImagePath,
+      if (originalText != null) 'original_text': originalText,
       if (correctedText != null) 'corrected_text': correctedText,
-      if (tagsJson != null) 'tags_json': tagsJson,
-      if (contentStatus != null) 'content_status': contentStatus,
       if (masteryLevel != null) 'mastery_level': masteryLevel,
-      if (analysisJson != null) 'analysis_json': analysisJson,
-      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (contentStatus != null) 'content_status': contentStatus,
       if (reviewCount != null) 'review_count': reviewCount,
+      if (nextReviewAt != null) 'next_review_at': nextReviewAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (lastReviewedAt != null) 'last_reviewed_at': lastReviewedAt,
+      if (aiAnalysisJson != null) 'ai_analysis_json': aiAnalysisJson,
+      if (tags != null) 'tags': tags,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   QuestionRecordsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? imagePath,
       Value<String>? subject,
-      Value<String>? recognizedText,
+      Value<String?>? originalImagePath,
+      Value<String>? originalText,
       Value<String>? correctedText,
-      Value<String>? tagsJson,
-      Value<String>? contentStatus,
       Value<String>? masteryLevel,
-      Value<String?>? analysisJson,
-      Value<bool>? isFavorite,
+      Value<String>? contentStatus,
       Value<int>? reviewCount,
+      Value<DateTime?>? nextReviewAt,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
-      Value<DateTime?>? lastReviewedAt,
+      Value<String?>? aiAnalysisJson,
+      Value<String>? tags,
       Value<int>? rowid}) {
     return QuestionRecordsCompanion(
       id: id ?? this.id,
-      imagePath: imagePath ?? this.imagePath,
       subject: subject ?? this.subject,
-      recognizedText: recognizedText ?? this.recognizedText,
+      originalImagePath: originalImagePath ?? this.originalImagePath,
+      originalText: originalText ?? this.originalText,
       correctedText: correctedText ?? this.correctedText,
-      tagsJson: tagsJson ?? this.tagsJson,
-      contentStatus: contentStatus ?? this.contentStatus,
       masteryLevel: masteryLevel ?? this.masteryLevel,
-      analysisJson: analysisJson ?? this.analysisJson,
-      isFavorite: isFavorite ?? this.isFavorite,
+      contentStatus: contentStatus ?? this.contentStatus,
       reviewCount: reviewCount ?? this.reviewCount,
+      nextReviewAt: nextReviewAt ?? this.nextReviewAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      lastReviewedAt: lastReviewedAt ?? this.lastReviewedAt,
+      aiAnalysisJson: aiAnalysisJson ?? this.aiAnalysisJson,
+      tags: tags ?? this.tags,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -638,35 +606,29 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (imagePath.present) {
-      map['image_path'] = Variable<String>(imagePath.value);
-    }
     if (subject.present) {
       map['subject'] = Variable<String>(subject.value);
     }
-    if (recognizedText.present) {
-      map['recognized_text'] = Variable<String>(recognizedText.value);
+    if (originalImagePath.present) {
+      map['original_image_path'] = Variable<String>(originalImagePath.value);
+    }
+    if (originalText.present) {
+      map['original_text'] = Variable<String>(originalText.value);
     }
     if (correctedText.present) {
       map['corrected_text'] = Variable<String>(correctedText.value);
     }
-    if (tagsJson.present) {
-      map['tags_json'] = Variable<String>(tagsJson.value);
+    if (masteryLevel.present) {
+      map['mastery_level'] = Variable<String>(masteryLevel.value);
     }
     if (contentStatus.present) {
       map['content_status'] = Variable<String>(contentStatus.value);
     }
-    if (masteryLevel.present) {
-      map['mastery_level'] = Variable<String>(masteryLevel.value);
-    }
-    if (analysisJson.present) {
-      map['analysis_json'] = Variable<String>(analysisJson.value);
-    }
-    if (isFavorite.present) {
-      map['is_favorite'] = Variable<bool>(isFavorite.value);
-    }
     if (reviewCount.present) {
       map['review_count'] = Variable<int>(reviewCount.value);
+    }
+    if (nextReviewAt.present) {
+      map['next_review_at'] = Variable<DateTime>(nextReviewAt.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -674,8 +636,11 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
-    if (lastReviewedAt.present) {
-      map['last_reviewed_at'] = Variable<DateTime>(lastReviewedAt.value);
+    if (aiAnalysisJson.present) {
+      map['ai_analysis_json'] = Variable<String>(aiAnalysisJson.value);
+    }
+    if (tags.present) {
+      map['tags'] = Variable<String>(tags.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -687,19 +652,18 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
   String toString() {
     return (StringBuffer('QuestionRecordsCompanion(')
           ..write('id: $id, ')
-          ..write('imagePath: $imagePath, ')
           ..write('subject: $subject, ')
-          ..write('recognizedText: $recognizedText, ')
+          ..write('originalImagePath: $originalImagePath, ')
+          ..write('originalText: $originalText, ')
           ..write('correctedText: $correctedText, ')
-          ..write('tagsJson: $tagsJson, ')
-          ..write('contentStatus: $contentStatus, ')
           ..write('masteryLevel: $masteryLevel, ')
-          ..write('analysisJson: $analysisJson, ')
-          ..write('isFavorite: $isFavorite, ')
+          ..write('contentStatus: $contentStatus, ')
           ..write('reviewCount: $reviewCount, ')
+          ..write('nextReviewAt: $nextReviewAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('lastReviewedAt: $lastReviewedAt, ')
+          ..write('aiAnalysisJson: $aiAnalysisJson, ')
+          ..write('tags: $tags, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -714,14 +678,18 @@ class $GeneratedExercisesTable extends GeneratedExercises
   $GeneratedExercisesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _questionRecordIdMeta =
-      const VerificationMeta('questionRecordId');
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _questionIdMeta =
+      const VerificationMeta('questionId');
   @override
-  late final GeneratedColumn<String> questionRecordId = GeneratedColumn<String>(
-      'question_record_id', aliasedName, false,
+  late final GeneratedColumn<String> questionId = GeneratedColumn<String>(
+      'question_id', aliasedName, false,
       type: DriftSqlType.string,
       requiredDuringInsert: true,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
@@ -747,27 +715,17 @@ class $GeneratedExercisesTable extends GeneratedExercises
       const VerificationMeta('explanation');
   @override
   late final GeneratedColumn<String> explanation = GeneratedColumn<String>(
-      'explanation', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _isCorrectMeta =
-      const VerificationMeta('isCorrect');
+      'explanation', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
   @override
-  late final GeneratedColumn<bool> isCorrect = GeneratedColumn<bool>(
-      'is_correct', aliasedName, true,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("is_correct" IN (0, 1))'));
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        questionRecordId,
-        difficulty,
-        question,
-        answer,
-        explanation,
-        isCorrect
-      ];
+  List<GeneratedColumn> get $columns =>
+      [id, questionId, difficulty, question, answer, explanation, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -780,16 +738,14 @@ class $GeneratedExercisesTable extends GeneratedExercises
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
-    if (data.containsKey('question_record_id')) {
+    if (data.containsKey('question_id')) {
       context.handle(
-          _questionRecordIdMeta,
-          questionRecordId.isAcceptableOrUnknown(
-              data['question_record_id']!, _questionRecordIdMeta));
+          _questionIdMeta,
+          questionId.isAcceptableOrUnknown(
+              data['question_id']!, _questionIdMeta));
     } else if (isInserting) {
-      context.missing(_questionRecordIdMeta);
+      context.missing(_questionIdMeta);
     }
     if (data.containsKey('difficulty')) {
       context.handle(
@@ -816,12 +772,12 @@ class $GeneratedExercisesTable extends GeneratedExercises
           _explanationMeta,
           explanation.isAcceptableOrUnknown(
               data['explanation']!, _explanationMeta));
-    } else if (isInserting) {
-      context.missing(_explanationMeta);
     }
-    if (data.containsKey('is_correct')) {
-      context.handle(_isCorrectMeta,
-          isCorrect.isAcceptableOrUnknown(data['is_correct']!, _isCorrectMeta));
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
     }
     return context;
   }
@@ -833,9 +789,9 @@ class $GeneratedExercisesTable extends GeneratedExercises
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return GeneratedExercise(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      questionRecordId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}question_record_id'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      questionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}question_id'])!,
       difficulty: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}difficulty'])!,
       question: attachedDatabase.typeMapping
@@ -843,9 +799,9 @@ class $GeneratedExercisesTable extends GeneratedExercises
       answer: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}answer'])!,
       explanation: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}explanation'])!,
-      isCorrect: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}is_correct']),
+          .read(DriftSqlType.string, data['${effectivePrefix}explanation']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
   }
 
@@ -857,47 +813,47 @@ class $GeneratedExercisesTable extends GeneratedExercises
 
 class GeneratedExercise extends DataClass
     implements Insertable<GeneratedExercise> {
-  final String id;
-  final String questionRecordId;
+  final int id;
+  final String questionId;
   final String difficulty;
   final String question;
   final String answer;
-  final String explanation;
-  final bool? isCorrect;
+  final String? explanation;
+  final DateTime createdAt;
   const GeneratedExercise(
       {required this.id,
-      required this.questionRecordId,
+      required this.questionId,
       required this.difficulty,
       required this.question,
       required this.answer,
-      required this.explanation,
-      this.isCorrect});
+      this.explanation,
+      required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['question_record_id'] = Variable<String>(questionRecordId);
+    map['id'] = Variable<int>(id);
+    map['question_id'] = Variable<String>(questionId);
     map['difficulty'] = Variable<String>(difficulty);
     map['question'] = Variable<String>(question);
     map['answer'] = Variable<String>(answer);
-    map['explanation'] = Variable<String>(explanation);
-    if (!nullToAbsent || isCorrect != null) {
-      map['is_correct'] = Variable<bool>(isCorrect);
+    if (!nullToAbsent || explanation != null) {
+      map['explanation'] = Variable<String>(explanation);
     }
+    map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
 
   GeneratedExercisesCompanion toCompanion(bool nullToAbsent) {
     return GeneratedExercisesCompanion(
       id: Value(id),
-      questionRecordId: Value(questionRecordId),
+      questionId: Value(questionId),
       difficulty: Value(difficulty),
       question: Value(question),
       answer: Value(answer),
-      explanation: Value(explanation),
-      isCorrect: isCorrect == null && nullToAbsent
+      explanation: explanation == null && nullToAbsent
           ? const Value.absent()
-          : Value(isCorrect),
+          : Value(explanation),
+      createdAt: Value(createdAt),
     );
   }
 
@@ -905,59 +861,58 @@ class GeneratedExercise extends DataClass
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return GeneratedExercise(
-      id: serializer.fromJson<String>(json['id']),
-      questionRecordId: serializer.fromJson<String>(json['questionRecordId']),
+      id: serializer.fromJson<int>(json['id']),
+      questionId: serializer.fromJson<String>(json['questionId']),
       difficulty: serializer.fromJson<String>(json['difficulty']),
       question: serializer.fromJson<String>(json['question']),
       answer: serializer.fromJson<String>(json['answer']),
-      explanation: serializer.fromJson<String>(json['explanation']),
-      isCorrect: serializer.fromJson<bool?>(json['isCorrect']),
+      explanation: serializer.fromJson<String?>(json['explanation']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'questionRecordId': serializer.toJson<String>(questionRecordId),
+      'id': serializer.toJson<int>(id),
+      'questionId': serializer.toJson<String>(questionId),
       'difficulty': serializer.toJson<String>(difficulty),
       'question': serializer.toJson<String>(question),
       'answer': serializer.toJson<String>(answer),
-      'explanation': serializer.toJson<String>(explanation),
-      'isCorrect': serializer.toJson<bool?>(isCorrect),
+      'explanation': serializer.toJson<String?>(explanation),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
   GeneratedExercise copyWith(
-          {String? id,
-          String? questionRecordId,
+          {int? id,
+          String? questionId,
           String? difficulty,
           String? question,
           String? answer,
-          String? explanation,
-          Value<bool?> isCorrect = const Value.absent()}) =>
+          Value<String?> explanation = const Value.absent(),
+          DateTime? createdAt}) =>
       GeneratedExercise(
         id: id ?? this.id,
-        questionRecordId: questionRecordId ?? this.questionRecordId,
+        questionId: questionId ?? this.questionId,
         difficulty: difficulty ?? this.difficulty,
         question: question ?? this.question,
         answer: answer ?? this.answer,
-        explanation: explanation ?? this.explanation,
-        isCorrect: isCorrect.present ? isCorrect.value : this.isCorrect,
+        explanation: explanation.present ? explanation.value : this.explanation,
+        createdAt: createdAt ?? this.createdAt,
       );
   GeneratedExercise copyWithCompanion(GeneratedExercisesCompanion data) {
     return GeneratedExercise(
       id: data.id.present ? data.id.value : this.id,
-      questionRecordId: data.questionRecordId.present
-          ? data.questionRecordId.value
-          : this.questionRecordId,
+      questionId:
+          data.questionId.present ? data.questionId.value : this.questionId,
       difficulty:
           data.difficulty.present ? data.difficulty.value : this.difficulty,
       question: data.question.present ? data.question.value : this.question,
       answer: data.answer.present ? data.answer.value : this.answer,
       explanation:
           data.explanation.present ? data.explanation.value : this.explanation,
-      isCorrect: data.isCorrect.present ? data.isCorrect.value : this.isCorrect,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
 
@@ -965,106 +920,98 @@ class GeneratedExercise extends DataClass
   String toString() {
     return (StringBuffer('GeneratedExercise(')
           ..write('id: $id, ')
-          ..write('questionRecordId: $questionRecordId, ')
+          ..write('questionId: $questionId, ')
           ..write('difficulty: $difficulty, ')
           ..write('question: $question, ')
           ..write('answer: $answer, ')
           ..write('explanation: $explanation, ')
-          ..write('isCorrect: $isCorrect')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, questionRecordId, difficulty, question,
-      answer, explanation, isCorrect);
+  int get hashCode => Object.hash(
+      id, questionId, difficulty, question, answer, explanation, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is GeneratedExercise &&
           other.id == this.id &&
-          other.questionRecordId == this.questionRecordId &&
+          other.questionId == this.questionId &&
           other.difficulty == this.difficulty &&
           other.question == this.question &&
           other.answer == this.answer &&
           other.explanation == this.explanation &&
-          other.isCorrect == this.isCorrect);
+          other.createdAt == this.createdAt);
 }
 
 class GeneratedExercisesCompanion extends UpdateCompanion<GeneratedExercise> {
-  final Value<String> id;
-  final Value<String> questionRecordId;
+  final Value<int> id;
+  final Value<String> questionId;
   final Value<String> difficulty;
   final Value<String> question;
   final Value<String> answer;
-  final Value<String> explanation;
-  final Value<bool?> isCorrect;
-  final Value<int> rowid;
+  final Value<String?> explanation;
+  final Value<DateTime> createdAt;
   const GeneratedExercisesCompanion({
     this.id = const Value.absent(),
-    this.questionRecordId = const Value.absent(),
+    this.questionId = const Value.absent(),
     this.difficulty = const Value.absent(),
     this.question = const Value.absent(),
     this.answer = const Value.absent(),
     this.explanation = const Value.absent(),
-    this.isCorrect = const Value.absent(),
-    this.rowid = const Value.absent(),
+    this.createdAt = const Value.absent(),
   });
   GeneratedExercisesCompanion.insert({
-    required String id,
-    required String questionRecordId,
+    this.id = const Value.absent(),
+    required String questionId,
     required String difficulty,
     required String question,
     required String answer,
-    required String explanation,
-    this.isCorrect = const Value.absent(),
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        questionRecordId = Value(questionRecordId),
+    this.explanation = const Value.absent(),
+    required DateTime createdAt,
+  })  : questionId = Value(questionId),
         difficulty = Value(difficulty),
         question = Value(question),
         answer = Value(answer),
-        explanation = Value(explanation);
+        createdAt = Value(createdAt);
   static Insertable<GeneratedExercise> custom({
-    Expression<String>? id,
-    Expression<String>? questionRecordId,
+    Expression<int>? id,
+    Expression<String>? questionId,
     Expression<String>? difficulty,
     Expression<String>? question,
     Expression<String>? answer,
     Expression<String>? explanation,
-    Expression<bool>? isCorrect,
-    Expression<int>? rowid,
+    Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (questionRecordId != null) 'question_record_id': questionRecordId,
+      if (questionId != null) 'question_id': questionId,
       if (difficulty != null) 'difficulty': difficulty,
       if (question != null) 'question': question,
       if (answer != null) 'answer': answer,
       if (explanation != null) 'explanation': explanation,
-      if (isCorrect != null) 'is_correct': isCorrect,
-      if (rowid != null) 'rowid': rowid,
+      if (createdAt != null) 'created_at': createdAt,
     });
   }
 
   GeneratedExercisesCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? questionRecordId,
+      {Value<int>? id,
+      Value<String>? questionId,
       Value<String>? difficulty,
       Value<String>? question,
       Value<String>? answer,
-      Value<String>? explanation,
-      Value<bool?>? isCorrect,
-      Value<int>? rowid}) {
+      Value<String?>? explanation,
+      Value<DateTime>? createdAt}) {
     return GeneratedExercisesCompanion(
       id: id ?? this.id,
-      questionRecordId: questionRecordId ?? this.questionRecordId,
+      questionId: questionId ?? this.questionId,
       difficulty: difficulty ?? this.difficulty,
       question: question ?? this.question,
       answer: answer ?? this.answer,
       explanation: explanation ?? this.explanation,
-      isCorrect: isCorrect ?? this.isCorrect,
-      rowid: rowid ?? this.rowid,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -1072,10 +1019,10 @@ class GeneratedExercisesCompanion extends UpdateCompanion<GeneratedExercise> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
     }
-    if (questionRecordId.present) {
-      map['question_record_id'] = Variable<String>(questionRecordId.value);
+    if (questionId.present) {
+      map['question_id'] = Variable<String>(questionId.value);
     }
     if (difficulty.present) {
       map['difficulty'] = Variable<String>(difficulty.value);
@@ -1089,11 +1036,8 @@ class GeneratedExercisesCompanion extends UpdateCompanion<GeneratedExercise> {
     if (explanation.present) {
       map['explanation'] = Variable<String>(explanation.value);
     }
-    if (isCorrect.present) {
-      map['is_correct'] = Variable<bool>(isCorrect.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     return map;
   }
@@ -1102,13 +1046,12 @@ class GeneratedExercisesCompanion extends UpdateCompanion<GeneratedExercise> {
   String toString() {
     return (StringBuffer('GeneratedExercisesCompanion(')
           ..write('id: $id, ')
-          ..write('questionRecordId: $questionRecordId, ')
+          ..write('questionId: $questionId, ')
           ..write('difficulty: $difficulty, ')
           ..write('question: $question, ')
           ..write('answer: $answer, ')
           ..write('explanation: $explanation, ')
-          ..write('isCorrect: $isCorrect, ')
-          ..write('rowid: $rowid')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -1122,14 +1065,18 @@ class $ReviewLogsTable extends ReviewLogs
   $ReviewLogsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _questionRecordIdMeta =
-      const VerificationMeta('questionRecordId');
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _questionIdMeta =
+      const VerificationMeta('questionId');
   @override
-  late final GeneratedColumn<String> questionRecordId = GeneratedColumn<String>(
-      'question_record_id', aliasedName, false,
+  late final GeneratedColumn<String> questionId = GeneratedColumn<String>(
+      'question_id', aliasedName, false,
       type: DriftSqlType.string,
       requiredDuringInsert: true,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
@@ -1140,20 +1087,29 @@ class $ReviewLogsTable extends ReviewLogs
   late final GeneratedColumn<DateTime> reviewedAt = GeneratedColumn<DateTime>(
       'reviewed_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _resultMeta = const VerificationMeta('result');
+  static const VerificationMeta _wasCorrectMeta =
+      const VerificationMeta('wasCorrect');
   @override
-  late final GeneratedColumn<String> result = GeneratedColumn<String>(
-      'result', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _masteryAfterMeta =
-      const VerificationMeta('masteryAfter');
+  late final GeneratedColumn<bool> wasCorrect = GeneratedColumn<bool>(
+      'was_correct', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("was_correct" IN (0, 1))'));
+  static const VerificationMeta _responseTimeMsMeta =
+      const VerificationMeta('responseTimeMs');
   @override
-  late final GeneratedColumn<String> masteryAfter = GeneratedColumn<String>(
-      'mastery_after', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumn<int> responseTimeMs = GeneratedColumn<int>(
+      'response_time_ms', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, questionRecordId, reviewedAt, result, masteryAfter];
+      [id, questionId, reviewedAt, wasCorrect, responseTimeMs, notes];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1166,16 +1122,14 @@ class $ReviewLogsTable extends ReviewLogs
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
-    if (data.containsKey('question_record_id')) {
+    if (data.containsKey('question_id')) {
       context.handle(
-          _questionRecordIdMeta,
-          questionRecordId.isAcceptableOrUnknown(
-              data['question_record_id']!, _questionRecordIdMeta));
+          _questionIdMeta,
+          questionId.isAcceptableOrUnknown(
+              data['question_id']!, _questionIdMeta));
     } else if (isInserting) {
-      context.missing(_questionRecordIdMeta);
+      context.missing(_questionIdMeta);
     }
     if (data.containsKey('reviewed_at')) {
       context.handle(
@@ -1185,19 +1139,23 @@ class $ReviewLogsTable extends ReviewLogs
     } else if (isInserting) {
       context.missing(_reviewedAtMeta);
     }
-    if (data.containsKey('result')) {
-      context.handle(_resultMeta,
-          result.isAcceptableOrUnknown(data['result']!, _resultMeta));
-    } else if (isInserting) {
-      context.missing(_resultMeta);
-    }
-    if (data.containsKey('mastery_after')) {
+    if (data.containsKey('was_correct')) {
       context.handle(
-          _masteryAfterMeta,
-          masteryAfter.isAcceptableOrUnknown(
-              data['mastery_after']!, _masteryAfterMeta));
+          _wasCorrectMeta,
+          wasCorrect.isAcceptableOrUnknown(
+              data['was_correct']!, _wasCorrectMeta));
     } else if (isInserting) {
-      context.missing(_masteryAfterMeta);
+      context.missing(_wasCorrectMeta);
+    }
+    if (data.containsKey('response_time_ms')) {
+      context.handle(
+          _responseTimeMsMeta,
+          responseTimeMs.isAcceptableOrUnknown(
+              data['response_time_ms']!, _responseTimeMsMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
     return context;
   }
@@ -1209,15 +1167,17 @@ class $ReviewLogsTable extends ReviewLogs
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ReviewLog(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      questionRecordId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}question_record_id'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      questionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}question_id'])!,
       reviewedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}reviewed_at'])!,
-      result: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}result'])!,
-      masteryAfter: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}mastery_after'])!,
+      wasCorrect: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}was_correct'])!,
+      responseTimeMs: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}response_time_ms']),
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
     );
   }
 
@@ -1228,35 +1188,46 @@ class $ReviewLogsTable extends ReviewLogs
 }
 
 class ReviewLog extends DataClass implements Insertable<ReviewLog> {
-  final String id;
-  final String questionRecordId;
+  final int id;
+  final String questionId;
   final DateTime reviewedAt;
-  final String result;
-  final String masteryAfter;
+  final bool wasCorrect;
+  final int? responseTimeMs;
+  final String? notes;
   const ReviewLog(
       {required this.id,
-      required this.questionRecordId,
+      required this.questionId,
       required this.reviewedAt,
-      required this.result,
-      required this.masteryAfter});
+      required this.wasCorrect,
+      this.responseTimeMs,
+      this.notes});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['question_record_id'] = Variable<String>(questionRecordId);
+    map['id'] = Variable<int>(id);
+    map['question_id'] = Variable<String>(questionId);
     map['reviewed_at'] = Variable<DateTime>(reviewedAt);
-    map['result'] = Variable<String>(result);
-    map['mastery_after'] = Variable<String>(masteryAfter);
+    map['was_correct'] = Variable<bool>(wasCorrect);
+    if (!nullToAbsent || responseTimeMs != null) {
+      map['response_time_ms'] = Variable<int>(responseTimeMs);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
     return map;
   }
 
   ReviewLogsCompanion toCompanion(bool nullToAbsent) {
     return ReviewLogsCompanion(
       id: Value(id),
-      questionRecordId: Value(questionRecordId),
+      questionId: Value(questionId),
       reviewedAt: Value(reviewedAt),
-      result: Value(result),
-      masteryAfter: Value(masteryAfter),
+      wasCorrect: Value(wasCorrect),
+      responseTimeMs: responseTimeMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(responseTimeMs),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
     );
   }
 
@@ -1264,50 +1235,56 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ReviewLog(
-      id: serializer.fromJson<String>(json['id']),
-      questionRecordId: serializer.fromJson<String>(json['questionRecordId']),
+      id: serializer.fromJson<int>(json['id']),
+      questionId: serializer.fromJson<String>(json['questionId']),
       reviewedAt: serializer.fromJson<DateTime>(json['reviewedAt']),
-      result: serializer.fromJson<String>(json['result']),
-      masteryAfter: serializer.fromJson<String>(json['masteryAfter']),
+      wasCorrect: serializer.fromJson<bool>(json['wasCorrect']),
+      responseTimeMs: serializer.fromJson<int?>(json['responseTimeMs']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'questionRecordId': serializer.toJson<String>(questionRecordId),
+      'id': serializer.toJson<int>(id),
+      'questionId': serializer.toJson<String>(questionId),
       'reviewedAt': serializer.toJson<DateTime>(reviewedAt),
-      'result': serializer.toJson<String>(result),
-      'masteryAfter': serializer.toJson<String>(masteryAfter),
+      'wasCorrect': serializer.toJson<bool>(wasCorrect),
+      'responseTimeMs': serializer.toJson<int?>(responseTimeMs),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
   ReviewLog copyWith(
-          {String? id,
-          String? questionRecordId,
+          {int? id,
+          String? questionId,
           DateTime? reviewedAt,
-          String? result,
-          String? masteryAfter}) =>
+          bool? wasCorrect,
+          Value<int?> responseTimeMs = const Value.absent(),
+          Value<String?> notes = const Value.absent()}) =>
       ReviewLog(
         id: id ?? this.id,
-        questionRecordId: questionRecordId ?? this.questionRecordId,
+        questionId: questionId ?? this.questionId,
         reviewedAt: reviewedAt ?? this.reviewedAt,
-        result: result ?? this.result,
-        masteryAfter: masteryAfter ?? this.masteryAfter,
+        wasCorrect: wasCorrect ?? this.wasCorrect,
+        responseTimeMs:
+            responseTimeMs.present ? responseTimeMs.value : this.responseTimeMs,
+        notes: notes.present ? notes.value : this.notes,
       );
   ReviewLog copyWithCompanion(ReviewLogsCompanion data) {
     return ReviewLog(
       id: data.id.present ? data.id.value : this.id,
-      questionRecordId: data.questionRecordId.present
-          ? data.questionRecordId.value
-          : this.questionRecordId,
+      questionId:
+          data.questionId.present ? data.questionId.value : this.questionId,
       reviewedAt:
           data.reviewedAt.present ? data.reviewedAt.value : this.reviewedAt,
-      result: data.result.present ? data.result.value : this.result,
-      masteryAfter: data.masteryAfter.present
-          ? data.masteryAfter.value
-          : this.masteryAfter,
+      wasCorrect:
+          data.wasCorrect.present ? data.wasCorrect.value : this.wasCorrect,
+      responseTimeMs: data.responseTimeMs.present
+          ? data.responseTimeMs.value
+          : this.responseTimeMs,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -1315,87 +1292,87 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
   String toString() {
     return (StringBuffer('ReviewLog(')
           ..write('id: $id, ')
-          ..write('questionRecordId: $questionRecordId, ')
+          ..write('questionId: $questionId, ')
           ..write('reviewedAt: $reviewedAt, ')
-          ..write('result: $result, ')
-          ..write('masteryAfter: $masteryAfter')
+          ..write('wasCorrect: $wasCorrect, ')
+          ..write('responseTimeMs: $responseTimeMs, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, questionRecordId, reviewedAt, result, masteryAfter);
+  int get hashCode => Object.hash(
+      id, questionId, reviewedAt, wasCorrect, responseTimeMs, notes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ReviewLog &&
           other.id == this.id &&
-          other.questionRecordId == this.questionRecordId &&
+          other.questionId == this.questionId &&
           other.reviewedAt == this.reviewedAt &&
-          other.result == this.result &&
-          other.masteryAfter == this.masteryAfter);
+          other.wasCorrect == this.wasCorrect &&
+          other.responseTimeMs == this.responseTimeMs &&
+          other.notes == this.notes);
 }
 
 class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
-  final Value<String> id;
-  final Value<String> questionRecordId;
+  final Value<int> id;
+  final Value<String> questionId;
   final Value<DateTime> reviewedAt;
-  final Value<String> result;
-  final Value<String> masteryAfter;
-  final Value<int> rowid;
+  final Value<bool> wasCorrect;
+  final Value<int?> responseTimeMs;
+  final Value<String?> notes;
   const ReviewLogsCompanion({
     this.id = const Value.absent(),
-    this.questionRecordId = const Value.absent(),
+    this.questionId = const Value.absent(),
     this.reviewedAt = const Value.absent(),
-    this.result = const Value.absent(),
-    this.masteryAfter = const Value.absent(),
-    this.rowid = const Value.absent(),
+    this.wasCorrect = const Value.absent(),
+    this.responseTimeMs = const Value.absent(),
+    this.notes = const Value.absent(),
   });
   ReviewLogsCompanion.insert({
-    required String id,
-    required String questionRecordId,
+    this.id = const Value.absent(),
+    required String questionId,
     required DateTime reviewedAt,
-    required String result,
-    required String masteryAfter,
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        questionRecordId = Value(questionRecordId),
+    required bool wasCorrect,
+    this.responseTimeMs = const Value.absent(),
+    this.notes = const Value.absent(),
+  })  : questionId = Value(questionId),
         reviewedAt = Value(reviewedAt),
-        result = Value(result),
-        masteryAfter = Value(masteryAfter);
+        wasCorrect = Value(wasCorrect);
   static Insertable<ReviewLog> custom({
-    Expression<String>? id,
-    Expression<String>? questionRecordId,
+    Expression<int>? id,
+    Expression<String>? questionId,
     Expression<DateTime>? reviewedAt,
-    Expression<String>? result,
-    Expression<String>? masteryAfter,
-    Expression<int>? rowid,
+    Expression<bool>? wasCorrect,
+    Expression<int>? responseTimeMs,
+    Expression<String>? notes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (questionRecordId != null) 'question_record_id': questionRecordId,
+      if (questionId != null) 'question_id': questionId,
       if (reviewedAt != null) 'reviewed_at': reviewedAt,
-      if (result != null) 'result': result,
-      if (masteryAfter != null) 'mastery_after': masteryAfter,
-      if (rowid != null) 'rowid': rowid,
+      if (wasCorrect != null) 'was_correct': wasCorrect,
+      if (responseTimeMs != null) 'response_time_ms': responseTimeMs,
+      if (notes != null) 'notes': notes,
     });
   }
 
   ReviewLogsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? questionRecordId,
+      {Value<int>? id,
+      Value<String>? questionId,
       Value<DateTime>? reviewedAt,
-      Value<String>? result,
-      Value<String>? masteryAfter,
-      Value<int>? rowid}) {
+      Value<bool>? wasCorrect,
+      Value<int?>? responseTimeMs,
+      Value<String?>? notes}) {
     return ReviewLogsCompanion(
       id: id ?? this.id,
-      questionRecordId: questionRecordId ?? this.questionRecordId,
+      questionId: questionId ?? this.questionId,
       reviewedAt: reviewedAt ?? this.reviewedAt,
-      result: result ?? this.result,
-      masteryAfter: masteryAfter ?? this.masteryAfter,
-      rowid: rowid ?? this.rowid,
+      wasCorrect: wasCorrect ?? this.wasCorrect,
+      responseTimeMs: responseTimeMs ?? this.responseTimeMs,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -1403,22 +1380,22 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
     }
-    if (questionRecordId.present) {
-      map['question_record_id'] = Variable<String>(questionRecordId.value);
+    if (questionId.present) {
+      map['question_id'] = Variable<String>(questionId.value);
     }
     if (reviewedAt.present) {
       map['reviewed_at'] = Variable<DateTime>(reviewedAt.value);
     }
-    if (result.present) {
-      map['result'] = Variable<String>(result.value);
+    if (wasCorrect.present) {
+      map['was_correct'] = Variable<bool>(wasCorrect.value);
     }
-    if (masteryAfter.present) {
-      map['mastery_after'] = Variable<String>(masteryAfter.value);
+    if (responseTimeMs.present) {
+      map['response_time_ms'] = Variable<int>(responseTimeMs.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
     }
     return map;
   }
@@ -1427,11 +1404,11 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
   String toString() {
     return (StringBuffer('ReviewLogsCompanion(')
           ..write('id: $id, ')
-          ..write('questionRecordId: $questionRecordId, ')
+          ..write('questionId: $questionId, ')
           ..write('reviewedAt: $reviewedAt, ')
-          ..write('result: $result, ')
-          ..write('masteryAfter: $masteryAfter, ')
-          ..write('rowid: $rowid')
+          ..write('wasCorrect: $wasCorrect, ')
+          ..write('responseTimeMs: $responseTimeMs, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -1453,8 +1430,14 @@ class $SettingsEntriesTable extends SettingsEntries
   late final GeneratedColumn<String> value = GeneratedColumn<String>(
       'value', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
   @override
-  List<GeneratedColumn> get $columns => [key, value];
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [key, value, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1477,6 +1460,12 @@ class $SettingsEntriesTable extends SettingsEntries
     } else if (isInserting) {
       context.missing(_valueMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
     return context;
   }
 
@@ -1490,6 +1479,8 @@ class $SettingsEntriesTable extends SettingsEntries
           .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
       value: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -1502,12 +1493,15 @@ class $SettingsEntriesTable extends SettingsEntries
 class SettingsEntry extends DataClass implements Insertable<SettingsEntry> {
   final String key;
   final String value;
-  const SettingsEntry({required this.key, required this.value});
+  final DateTime updatedAt;
+  const SettingsEntry(
+      {required this.key, required this.value, required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['key'] = Variable<String>(key);
     map['value'] = Variable<String>(value);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
@@ -1515,6 +1509,7 @@ class SettingsEntry extends DataClass implements Insertable<SettingsEntry> {
     return SettingsEntriesCompanion(
       key: Value(key),
       value: Value(value),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -1524,6 +1519,7 @@ class SettingsEntry extends DataClass implements Insertable<SettingsEntry> {
     return SettingsEntry(
       key: serializer.fromJson<String>(json['key']),
       value: serializer.fromJson<String>(json['value']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -1532,17 +1528,21 @@ class SettingsEntry extends DataClass implements Insertable<SettingsEntry> {
     return <String, dynamic>{
       'key': serializer.toJson<String>(key),
       'value': serializer.toJson<String>(value),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
-  SettingsEntry copyWith({String? key, String? value}) => SettingsEntry(
+  SettingsEntry copyWith({String? key, String? value, DateTime? updatedAt}) =>
+      SettingsEntry(
         key: key ?? this.key,
         value: value ?? this.value,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
   SettingsEntry copyWithCompanion(SettingsEntriesCompanion data) {
     return SettingsEntry(
       key: data.key.present ? data.key.value : this.key,
       value: data.value.present ? data.value.value : this.value,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -1550,53 +1550,65 @@ class SettingsEntry extends DataClass implements Insertable<SettingsEntry> {
   String toString() {
     return (StringBuffer('SettingsEntry(')
           ..write('key: $key, ')
-          ..write('value: $value')
+          ..write('value: $value, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(key, value);
+  int get hashCode => Object.hash(key, value, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SettingsEntry &&
           other.key == this.key &&
-          other.value == this.value);
+          other.value == this.value &&
+          other.updatedAt == this.updatedAt);
 }
 
 class SettingsEntriesCompanion extends UpdateCompanion<SettingsEntry> {
   final Value<String> key;
   final Value<String> value;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const SettingsEntriesCompanion({
     this.key = const Value.absent(),
     this.value = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettingsEntriesCompanion.insert({
     required String key,
     required String value,
+    required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : key = Value(key),
-        value = Value(value);
+        value = Value(value),
+        updatedAt = Value(updatedAt);
   static Insertable<SettingsEntry> custom({
     Expression<String>? key,
     Expression<String>? value,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (key != null) 'key': key,
       if (value != null) 'value': value,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   SettingsEntriesCompanion copyWith(
-      {Value<String>? key, Value<String>? value, Value<int>? rowid}) {
+      {Value<String>? key,
+      Value<String>? value,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return SettingsEntriesCompanion(
       key: key ?? this.key,
       value: value ?? this.value,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1610,6 +1622,9 @@ class SettingsEntriesCompanion extends UpdateCompanion<SettingsEntry> {
     if (value.present) {
       map['value'] = Variable<String>(value.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1621,6 +1636,7 @@ class SettingsEntriesCompanion extends UpdateCompanion<SettingsEntry> {
     return (StringBuffer('SettingsEntriesCompanion(')
           ..write('key: $key, ')
           ..write('value: $value, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1648,37 +1664,35 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$QuestionRecordsTableCreateCompanionBuilder = QuestionRecordsCompanion
     Function({
   required String id,
-  required String imagePath,
   required String subject,
-  required String recognizedText,
+  Value<String?> originalImagePath,
+  required String originalText,
   required String correctedText,
-  Value<String> tagsJson,
-  required String contentStatus,
   required String masteryLevel,
-  Value<String?> analysisJson,
-  Value<bool> isFavorite,
+  required String contentStatus,
   Value<int> reviewCount,
+  Value<DateTime?> nextReviewAt,
   required DateTime createdAt,
   required DateTime updatedAt,
-  Value<DateTime?> lastReviewedAt,
+  Value<String?> aiAnalysisJson,
+  Value<String> tags,
   Value<int> rowid,
 });
 typedef $$QuestionRecordsTableUpdateCompanionBuilder = QuestionRecordsCompanion
     Function({
   Value<String> id,
-  Value<String> imagePath,
   Value<String> subject,
-  Value<String> recognizedText,
+  Value<String?> originalImagePath,
+  Value<String> originalText,
   Value<String> correctedText,
-  Value<String> tagsJson,
-  Value<String> contentStatus,
   Value<String> masteryLevel,
-  Value<String?> analysisJson,
-  Value<bool> isFavorite,
+  Value<String> contentStatus,
   Value<int> reviewCount,
+  Value<DateTime?> nextReviewAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
-  Value<DateTime?> lastReviewedAt,
+  Value<String?> aiAnalysisJson,
+  Value<String> tags,
   Value<int> rowid,
 });
 
@@ -1690,14 +1704,13 @@ final class $$QuestionRecordsTableReferences extends BaseReferences<
   static MultiTypedResultKey<$GeneratedExercisesTable, List<GeneratedExercise>>
       _generatedExercisesRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.generatedExercises,
-              aliasName: $_aliasNameGenerator(db.questionRecords.id,
-                  db.generatedExercises.questionRecordId));
+              aliasName: $_aliasNameGenerator(
+                  db.questionRecords.id, db.generatedExercises.questionId));
 
   $$GeneratedExercisesTableProcessedTableManager get generatedExercisesRefs {
-    final manager =
-        $$GeneratedExercisesTableTableManager($_db, $_db.generatedExercises)
-            .filter((f) =>
-                f.questionRecordId.id.sqlEquals($_itemColumn<String>('id')!));
+    final manager = $$GeneratedExercisesTableTableManager(
+            $_db, $_db.generatedExercises)
+        .filter((f) => f.questionId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_generatedExercisesRefsTable($_db));
@@ -1709,11 +1722,11 @@ final class $$QuestionRecordsTableReferences extends BaseReferences<
       _reviewLogsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.reviewLogs,
               aliasName: $_aliasNameGenerator(
-                  db.questionRecords.id, db.reviewLogs.questionRecordId));
+                  db.questionRecords.id, db.reviewLogs.questionId));
 
   $$ReviewLogsTableProcessedTableManager get reviewLogsRefs {
-    final manager = $$ReviewLogsTableTableManager($_db, $_db.reviewLogs).filter(
-        (f) => f.questionRecordId.id.sqlEquals($_itemColumn<String>('id')!));
+    final manager = $$ReviewLogsTableTableManager($_db, $_db.reviewLogs)
+        .filter((f) => f.questionId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_reviewLogsRefsTable($_db));
     return ProcessedTableManager(
@@ -1733,36 +1746,30 @@ class $$QuestionRecordsTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get imagePath => $composableBuilder(
-      column: $table.imagePath, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<String> get subject => $composableBuilder(
       column: $table.subject, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get recognizedText => $composableBuilder(
-      column: $table.recognizedText,
+  ColumnFilters<String> get originalImagePath => $composableBuilder(
+      column: $table.originalImagePath,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get originalText => $composableBuilder(
+      column: $table.originalText, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get correctedText => $composableBuilder(
       column: $table.correctedText, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get tagsJson => $composableBuilder(
-      column: $table.tagsJson, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get masteryLevel => $composableBuilder(
+      column: $table.masteryLevel, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get contentStatus => $composableBuilder(
       column: $table.contentStatus, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get masteryLevel => $composableBuilder(
-      column: $table.masteryLevel, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get analysisJson => $composableBuilder(
-      column: $table.analysisJson, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<int> get reviewCount => $composableBuilder(
       column: $table.reviewCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextReviewAt => $composableBuilder(
+      column: $table.nextReviewAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -1770,9 +1777,12 @@ class $$QuestionRecordsTableFilterComposer
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get lastReviewedAt => $composableBuilder(
-      column: $table.lastReviewedAt,
+  ColumnFilters<String> get aiAnalysisJson => $composableBuilder(
+      column: $table.aiAnalysisJson,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tags => $composableBuilder(
+      column: $table.tags, builder: (column) => ColumnFilters(column));
 
   Expression<bool> generatedExercisesRefs(
       Expression<bool> Function($$GeneratedExercisesTableFilterComposer f) f) {
@@ -1780,7 +1790,7 @@ class $$QuestionRecordsTableFilterComposer
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.generatedExercises,
-        getReferencedColumn: (t) => t.questionRecordId,
+        getReferencedColumn: (t) => t.questionId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -1801,7 +1811,7 @@ class $$QuestionRecordsTableFilterComposer
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.reviewLogs,
-        getReferencedColumn: (t) => t.questionRecordId,
+        getReferencedColumn: (t) => t.questionId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -1829,40 +1839,35 @@ class $$QuestionRecordsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get imagePath => $composableBuilder(
-      column: $table.imagePath, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<String> get subject => $composableBuilder(
       column: $table.subject, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get recognizedText => $composableBuilder(
-      column: $table.recognizedText,
+  ColumnOrderings<String> get originalImagePath => $composableBuilder(
+      column: $table.originalImagePath,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get originalText => $composableBuilder(
+      column: $table.originalText,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get correctedText => $composableBuilder(
       column: $table.correctedText,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get tagsJson => $composableBuilder(
-      column: $table.tagsJson, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get masteryLevel => $composableBuilder(
+      column: $table.masteryLevel,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get contentStatus => $composableBuilder(
       column: $table.contentStatus,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get masteryLevel => $composableBuilder(
-      column: $table.masteryLevel,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get analysisJson => $composableBuilder(
-      column: $table.analysisJson,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<int> get reviewCount => $composableBuilder(
       column: $table.reviewCount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextReviewAt => $composableBuilder(
+      column: $table.nextReviewAt,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -1870,9 +1875,12 @@ class $$QuestionRecordsTableOrderingComposer
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get lastReviewedAt => $composableBuilder(
-      column: $table.lastReviewedAt,
+  ColumnOrderings<String> get aiAnalysisJson => $composableBuilder(
+      column: $table.aiAnalysisJson,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tags => $composableBuilder(
+      column: $table.tags, builder: (column) => ColumnOrderings(column));
 }
 
 class $$QuestionRecordsTableAnnotationComposer
@@ -1887,35 +1895,29 @@ class $$QuestionRecordsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get imagePath =>
-      $composableBuilder(column: $table.imagePath, builder: (column) => column);
-
   GeneratedColumn<String> get subject =>
       $composableBuilder(column: $table.subject, builder: (column) => column);
 
-  GeneratedColumn<String> get recognizedText => $composableBuilder(
-      column: $table.recognizedText, builder: (column) => column);
+  GeneratedColumn<String> get originalImagePath => $composableBuilder(
+      column: $table.originalImagePath, builder: (column) => column);
+
+  GeneratedColumn<String> get originalText => $composableBuilder(
+      column: $table.originalText, builder: (column) => column);
 
   GeneratedColumn<String> get correctedText => $composableBuilder(
       column: $table.correctedText, builder: (column) => column);
 
-  GeneratedColumn<String> get tagsJson =>
-      $composableBuilder(column: $table.tagsJson, builder: (column) => column);
+  GeneratedColumn<String> get masteryLevel => $composableBuilder(
+      column: $table.masteryLevel, builder: (column) => column);
 
   GeneratedColumn<String> get contentStatus => $composableBuilder(
       column: $table.contentStatus, builder: (column) => column);
 
-  GeneratedColumn<String> get masteryLevel => $composableBuilder(
-      column: $table.masteryLevel, builder: (column) => column);
-
-  GeneratedColumn<String> get analysisJson => $composableBuilder(
-      column: $table.analysisJson, builder: (column) => column);
-
-  GeneratedColumn<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => column);
-
   GeneratedColumn<int> get reviewCount => $composableBuilder(
       column: $table.reviewCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextReviewAt => $composableBuilder(
+      column: $table.nextReviewAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1923,8 +1925,11 @@ class $$QuestionRecordsTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get lastReviewedAt => $composableBuilder(
-      column: $table.lastReviewedAt, builder: (column) => column);
+  GeneratedColumn<String> get aiAnalysisJson => $composableBuilder(
+      column: $table.aiAnalysisJson, builder: (column) => column);
+
+  GeneratedColumn<String> get tags =>
+      $composableBuilder(column: $table.tags, builder: (column) => column);
 
   Expression<T> generatedExercisesRefs<T extends Object>(
       Expression<T> Function($$GeneratedExercisesTableAnnotationComposer a) f) {
@@ -1933,7 +1938,7 @@ class $$QuestionRecordsTableAnnotationComposer
             composer: this,
             getCurrentColumn: (t) => t.id,
             referencedTable: $db.generatedExercises,
-            getReferencedColumn: (t) => t.questionRecordId,
+            getReferencedColumn: (t) => t.questionId,
             builder: (joinBuilder,
                     {$addJoinBuilderToRootComposer,
                     $removeJoinBuilderFromRootComposer}) =>
@@ -1954,7 +1959,7 @@ class $$QuestionRecordsTableAnnotationComposer
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.reviewLogs,
-        getReferencedColumn: (t) => t.questionRecordId,
+        getReferencedColumn: (t) => t.questionId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -1996,70 +2001,66 @@ class $$QuestionRecordsTableTableManager extends RootTableManager<
               $$QuestionRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> imagePath = const Value.absent(),
             Value<String> subject = const Value.absent(),
-            Value<String> recognizedText = const Value.absent(),
+            Value<String?> originalImagePath = const Value.absent(),
+            Value<String> originalText = const Value.absent(),
             Value<String> correctedText = const Value.absent(),
-            Value<String> tagsJson = const Value.absent(),
-            Value<String> contentStatus = const Value.absent(),
             Value<String> masteryLevel = const Value.absent(),
-            Value<String?> analysisJson = const Value.absent(),
-            Value<bool> isFavorite = const Value.absent(),
+            Value<String> contentStatus = const Value.absent(),
             Value<int> reviewCount = const Value.absent(),
+            Value<DateTime?> nextReviewAt = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
-            Value<DateTime?> lastReviewedAt = const Value.absent(),
+            Value<String?> aiAnalysisJson = const Value.absent(),
+            Value<String> tags = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               QuestionRecordsCompanion(
             id: id,
-            imagePath: imagePath,
             subject: subject,
-            recognizedText: recognizedText,
+            originalImagePath: originalImagePath,
+            originalText: originalText,
             correctedText: correctedText,
-            tagsJson: tagsJson,
-            contentStatus: contentStatus,
             masteryLevel: masteryLevel,
-            analysisJson: analysisJson,
-            isFavorite: isFavorite,
+            contentStatus: contentStatus,
             reviewCount: reviewCount,
+            nextReviewAt: nextReviewAt,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            lastReviewedAt: lastReviewedAt,
+            aiAnalysisJson: aiAnalysisJson,
+            tags: tags,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            required String imagePath,
             required String subject,
-            required String recognizedText,
+            Value<String?> originalImagePath = const Value.absent(),
+            required String originalText,
             required String correctedText,
-            Value<String> tagsJson = const Value.absent(),
-            required String contentStatus,
             required String masteryLevel,
-            Value<String?> analysisJson = const Value.absent(),
-            Value<bool> isFavorite = const Value.absent(),
+            required String contentStatus,
             Value<int> reviewCount = const Value.absent(),
+            Value<DateTime?> nextReviewAt = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
-            Value<DateTime?> lastReviewedAt = const Value.absent(),
+            Value<String?> aiAnalysisJson = const Value.absent(),
+            Value<String> tags = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               QuestionRecordsCompanion.insert(
             id: id,
-            imagePath: imagePath,
             subject: subject,
-            recognizedText: recognizedText,
+            originalImagePath: originalImagePath,
+            originalText: originalText,
             correctedText: correctedText,
-            tagsJson: tagsJson,
-            contentStatus: contentStatus,
             masteryLevel: masteryLevel,
-            analysisJson: analysisJson,
-            isFavorite: isFavorite,
+            contentStatus: contentStatus,
             reviewCount: reviewCount,
+            nextReviewAt: nextReviewAt,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            lastReviewedAt: lastReviewedAt,
+            aiAnalysisJson: aiAnalysisJson,
+            tags: tags,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -2090,7 +2091,7 @@ class $$QuestionRecordsTableTableManager extends RootTableManager<
                                 .generatedExercisesRefs,
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
-                                .where((e) => e.questionRecordId == item.id),
+                                .where((e) => e.questionId == item.id),
                         typedResults: items),
                   if (reviewLogsRefs)
                     await $_getPrefetchedData<QuestionRecord,
@@ -2103,7 +2104,7 @@ class $$QuestionRecordsTableTableManager extends RootTableManager<
                                 .reviewLogsRefs,
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
-                                .where((e) => e.questionRecordId == item.id),
+                                .where((e) => e.questionId == item.id),
                         typedResults: items)
                 ];
               },
@@ -2126,25 +2127,23 @@ typedef $$QuestionRecordsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function({bool generatedExercisesRefs, bool reviewLogsRefs})>;
 typedef $$GeneratedExercisesTableCreateCompanionBuilder
     = GeneratedExercisesCompanion Function({
-  required String id,
-  required String questionRecordId,
+  Value<int> id,
+  required String questionId,
   required String difficulty,
   required String question,
   required String answer,
-  required String explanation,
-  Value<bool?> isCorrect,
-  Value<int> rowid,
+  Value<String?> explanation,
+  required DateTime createdAt,
 });
 typedef $$GeneratedExercisesTableUpdateCompanionBuilder
     = GeneratedExercisesCompanion Function({
-  Value<String> id,
-  Value<String> questionRecordId,
+  Value<int> id,
+  Value<String> questionId,
   Value<String> difficulty,
   Value<String> question,
   Value<String> answer,
-  Value<String> explanation,
-  Value<bool?> isCorrect,
-  Value<int> rowid,
+  Value<String?> explanation,
+  Value<DateTime> createdAt,
 });
 
 final class $$GeneratedExercisesTableReferences extends BaseReferences<
@@ -2152,17 +2151,17 @@ final class $$GeneratedExercisesTableReferences extends BaseReferences<
   $$GeneratedExercisesTableReferences(
       super.$_db, super.$_table, super.$_typedResult);
 
-  static $QuestionRecordsTable _questionRecordIdTable(_$AppDatabase db) =>
+  static $QuestionRecordsTable _questionIdTable(_$AppDatabase db) =>
       db.questionRecords.createAlias($_aliasNameGenerator(
-          db.generatedExercises.questionRecordId, db.questionRecords.id));
+          db.generatedExercises.questionId, db.questionRecords.id));
 
-  $$QuestionRecordsTableProcessedTableManager get questionRecordId {
-    final $_column = $_itemColumn<String>('question_record_id')!;
+  $$QuestionRecordsTableProcessedTableManager get questionId {
+    final $_column = $_itemColumn<String>('question_id')!;
 
     final manager =
         $$QuestionRecordsTableTableManager($_db, $_db.questionRecords)
             .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_questionRecordIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_questionIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
@@ -2178,7 +2177,7 @@ class $$GeneratedExercisesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get difficulty => $composableBuilder(
@@ -2193,13 +2192,13 @@ class $$GeneratedExercisesTableFilterComposer
   ColumnFilters<String> get explanation => $composableBuilder(
       column: $table.explanation, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get isCorrect => $composableBuilder(
-      column: $table.isCorrect, builder: (column) => ColumnFilters(column));
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
-  $$QuestionRecordsTableFilterComposer get questionRecordId {
+  $$QuestionRecordsTableFilterComposer get questionId {
     final $$QuestionRecordsTableFilterComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.questionRecordId,
+        getCurrentColumn: (t) => t.questionId,
         referencedTable: $db.questionRecords,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
@@ -2226,7 +2225,7 @@ class $$GeneratedExercisesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get difficulty => $composableBuilder(
@@ -2241,13 +2240,13 @@ class $$GeneratedExercisesTableOrderingComposer
   ColumnOrderings<String> get explanation => $composableBuilder(
       column: $table.explanation, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get isCorrect => $composableBuilder(
-      column: $table.isCorrect, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
-  $$QuestionRecordsTableOrderingComposer get questionRecordId {
+  $$QuestionRecordsTableOrderingComposer get questionId {
     final $$QuestionRecordsTableOrderingComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.questionRecordId,
+        getCurrentColumn: (t) => t.questionId,
         referencedTable: $db.questionRecords,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
@@ -2274,7 +2273,7 @@ class $$GeneratedExercisesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get difficulty => $composableBuilder(
@@ -2289,13 +2288,13 @@ class $$GeneratedExercisesTableAnnotationComposer
   GeneratedColumn<String> get explanation => $composableBuilder(
       column: $table.explanation, builder: (column) => column);
 
-  GeneratedColumn<bool> get isCorrect =>
-      $composableBuilder(column: $table.isCorrect, builder: (column) => column);
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  $$QuestionRecordsTableAnnotationComposer get questionRecordId {
+  $$QuestionRecordsTableAnnotationComposer get questionId {
     final $$QuestionRecordsTableAnnotationComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.questionRecordId,
+        getCurrentColumn: (t) => t.questionId,
         referencedTable: $db.questionRecords,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
@@ -2324,7 +2323,7 @@ class $$GeneratedExercisesTableTableManager extends RootTableManager<
     $$GeneratedExercisesTableUpdateCompanionBuilder,
     (GeneratedExercise, $$GeneratedExercisesTableReferences),
     GeneratedExercise,
-    PrefetchHooks Function({bool questionRecordId})> {
+    PrefetchHooks Function({bool questionId})> {
   $$GeneratedExercisesTableTableManager(
       _$AppDatabase db, $GeneratedExercisesTable table)
       : super(TableManagerState(
@@ -2338,44 +2337,40 @@ class $$GeneratedExercisesTableTableManager extends RootTableManager<
               $$GeneratedExercisesTableAnnotationComposer(
                   $db: db, $table: table),
           updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> questionRecordId = const Value.absent(),
+            Value<int> id = const Value.absent(),
+            Value<String> questionId = const Value.absent(),
             Value<String> difficulty = const Value.absent(),
             Value<String> question = const Value.absent(),
             Value<String> answer = const Value.absent(),
-            Value<String> explanation = const Value.absent(),
-            Value<bool?> isCorrect = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
+            Value<String?> explanation = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
           }) =>
               GeneratedExercisesCompanion(
             id: id,
-            questionRecordId: questionRecordId,
+            questionId: questionId,
             difficulty: difficulty,
             question: question,
             answer: answer,
             explanation: explanation,
-            isCorrect: isCorrect,
-            rowid: rowid,
+            createdAt: createdAt,
           ),
           createCompanionCallback: ({
-            required String id,
-            required String questionRecordId,
+            Value<int> id = const Value.absent(),
+            required String questionId,
             required String difficulty,
             required String question,
             required String answer,
-            required String explanation,
-            Value<bool?> isCorrect = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
+            Value<String?> explanation = const Value.absent(),
+            required DateTime createdAt,
           }) =>
               GeneratedExercisesCompanion.insert(
             id: id,
-            questionRecordId: questionRecordId,
+            questionId: questionId,
             difficulty: difficulty,
             question: question,
             answer: answer,
             explanation: explanation,
-            isCorrect: isCorrect,
-            rowid: rowid,
+            createdAt: createdAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -2383,7 +2378,7 @@ class $$GeneratedExercisesTableTableManager extends RootTableManager<
                     $$GeneratedExercisesTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({questionRecordId = false}) {
+          prefetchHooksCallback: ({questionId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -2400,14 +2395,14 @@ class $$GeneratedExercisesTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
-                if (questionRecordId) {
+                if (questionId) {
                   state = state.withJoin(
                     currentTable: table,
-                    currentColumn: table.questionRecordId,
+                    currentColumn: table.questionId,
                     referencedTable: $$GeneratedExercisesTableReferences
-                        ._questionRecordIdTable(db),
+                        ._questionIdTable(db),
                     referencedColumn: $$GeneratedExercisesTableReferences
-                        ._questionRecordIdTable(db)
+                        ._questionIdTable(db)
                         .id,
                   ) as T;
                 }
@@ -2433,39 +2428,39 @@ typedef $$GeneratedExercisesTableProcessedTableManager = ProcessedTableManager<
     $$GeneratedExercisesTableUpdateCompanionBuilder,
     (GeneratedExercise, $$GeneratedExercisesTableReferences),
     GeneratedExercise,
-    PrefetchHooks Function({bool questionRecordId})>;
+    PrefetchHooks Function({bool questionId})>;
 typedef $$ReviewLogsTableCreateCompanionBuilder = ReviewLogsCompanion Function({
-  required String id,
-  required String questionRecordId,
+  Value<int> id,
+  required String questionId,
   required DateTime reviewedAt,
-  required String result,
-  required String masteryAfter,
-  Value<int> rowid,
+  required bool wasCorrect,
+  Value<int?> responseTimeMs,
+  Value<String?> notes,
 });
 typedef $$ReviewLogsTableUpdateCompanionBuilder = ReviewLogsCompanion Function({
-  Value<String> id,
-  Value<String> questionRecordId,
+  Value<int> id,
+  Value<String> questionId,
   Value<DateTime> reviewedAt,
-  Value<String> result,
-  Value<String> masteryAfter,
-  Value<int> rowid,
+  Value<bool> wasCorrect,
+  Value<int?> responseTimeMs,
+  Value<String?> notes,
 });
 
 final class $$ReviewLogsTableReferences
     extends BaseReferences<_$AppDatabase, $ReviewLogsTable, ReviewLog> {
   $$ReviewLogsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $QuestionRecordsTable _questionRecordIdTable(_$AppDatabase db) =>
+  static $QuestionRecordsTable _questionIdTable(_$AppDatabase db) =>
       db.questionRecords.createAlias($_aliasNameGenerator(
-          db.reviewLogs.questionRecordId, db.questionRecords.id));
+          db.reviewLogs.questionId, db.questionRecords.id));
 
-  $$QuestionRecordsTableProcessedTableManager get questionRecordId {
-    final $_column = $_itemColumn<String>('question_record_id')!;
+  $$QuestionRecordsTableProcessedTableManager get questionId {
+    final $_column = $_itemColumn<String>('question_id')!;
 
     final manager =
         $$QuestionRecordsTableTableManager($_db, $_db.questionRecords)
             .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_questionRecordIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_questionIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
@@ -2481,22 +2476,26 @@ class $$ReviewLogsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get reviewedAt => $composableBuilder(
       column: $table.reviewedAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get result => $composableBuilder(
-      column: $table.result, builder: (column) => ColumnFilters(column));
+  ColumnFilters<bool> get wasCorrect => $composableBuilder(
+      column: $table.wasCorrect, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get masteryAfter => $composableBuilder(
-      column: $table.masteryAfter, builder: (column) => ColumnFilters(column));
+  ColumnFilters<int> get responseTimeMs => $composableBuilder(
+      column: $table.responseTimeMs,
+      builder: (column) => ColumnFilters(column));
 
-  $$QuestionRecordsTableFilterComposer get questionRecordId {
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  $$QuestionRecordsTableFilterComposer get questionId {
     final $$QuestionRecordsTableFilterComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.questionRecordId,
+        getCurrentColumn: (t) => t.questionId,
         referencedTable: $db.questionRecords,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
@@ -2523,23 +2522,26 @@ class $$ReviewLogsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get reviewedAt => $composableBuilder(
       column: $table.reviewedAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get result => $composableBuilder(
-      column: $table.result, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<bool> get wasCorrect => $composableBuilder(
+      column: $table.wasCorrect, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get masteryAfter => $composableBuilder(
-      column: $table.masteryAfter,
+  ColumnOrderings<int> get responseTimeMs => $composableBuilder(
+      column: $table.responseTimeMs,
       builder: (column) => ColumnOrderings(column));
 
-  $$QuestionRecordsTableOrderingComposer get questionRecordId {
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  $$QuestionRecordsTableOrderingComposer get questionId {
     final $$QuestionRecordsTableOrderingComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.questionRecordId,
+        getCurrentColumn: (t) => t.questionId,
         referencedTable: $db.questionRecords,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
@@ -2566,22 +2568,25 @@ class $$ReviewLogsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<DateTime> get reviewedAt => $composableBuilder(
       column: $table.reviewedAt, builder: (column) => column);
 
-  GeneratedColumn<String> get result =>
-      $composableBuilder(column: $table.result, builder: (column) => column);
+  GeneratedColumn<bool> get wasCorrect => $composableBuilder(
+      column: $table.wasCorrect, builder: (column) => column);
 
-  GeneratedColumn<String> get masteryAfter => $composableBuilder(
-      column: $table.masteryAfter, builder: (column) => column);
+  GeneratedColumn<int> get responseTimeMs => $composableBuilder(
+      column: $table.responseTimeMs, builder: (column) => column);
 
-  $$QuestionRecordsTableAnnotationComposer get questionRecordId {
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  $$QuestionRecordsTableAnnotationComposer get questionId {
     final $$QuestionRecordsTableAnnotationComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.questionRecordId,
+        getCurrentColumn: (t) => t.questionId,
         referencedTable: $db.questionRecords,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
@@ -2610,7 +2615,7 @@ class $$ReviewLogsTableTableManager extends RootTableManager<
     $$ReviewLogsTableUpdateCompanionBuilder,
     (ReviewLog, $$ReviewLogsTableReferences),
     ReviewLog,
-    PrefetchHooks Function({bool questionRecordId})> {
+    PrefetchHooks Function({bool questionId})> {
   $$ReviewLogsTableTableManager(_$AppDatabase db, $ReviewLogsTable table)
       : super(TableManagerState(
           db: db,
@@ -2622,36 +2627,36 @@ class $$ReviewLogsTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$ReviewLogsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> questionRecordId = const Value.absent(),
+            Value<int> id = const Value.absent(),
+            Value<String> questionId = const Value.absent(),
             Value<DateTime> reviewedAt = const Value.absent(),
-            Value<String> result = const Value.absent(),
-            Value<String> masteryAfter = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
+            Value<bool> wasCorrect = const Value.absent(),
+            Value<int?> responseTimeMs = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
           }) =>
               ReviewLogsCompanion(
             id: id,
-            questionRecordId: questionRecordId,
+            questionId: questionId,
             reviewedAt: reviewedAt,
-            result: result,
-            masteryAfter: masteryAfter,
-            rowid: rowid,
+            wasCorrect: wasCorrect,
+            responseTimeMs: responseTimeMs,
+            notes: notes,
           ),
           createCompanionCallback: ({
-            required String id,
-            required String questionRecordId,
+            Value<int> id = const Value.absent(),
+            required String questionId,
             required DateTime reviewedAt,
-            required String result,
-            required String masteryAfter,
-            Value<int> rowid = const Value.absent(),
+            required bool wasCorrect,
+            Value<int?> responseTimeMs = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
           }) =>
               ReviewLogsCompanion.insert(
             id: id,
-            questionRecordId: questionRecordId,
+            questionId: questionId,
             reviewedAt: reviewedAt,
-            result: result,
-            masteryAfter: masteryAfter,
-            rowid: rowid,
+            wasCorrect: wasCorrect,
+            responseTimeMs: responseTimeMs,
+            notes: notes,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -2659,7 +2664,7 @@ class $$ReviewLogsTableTableManager extends RootTableManager<
                     $$ReviewLogsTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({questionRecordId = false}) {
+          prefetchHooksCallback: ({questionId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -2676,15 +2681,14 @@ class $$ReviewLogsTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
-                if (questionRecordId) {
+                if (questionId) {
                   state = state.withJoin(
                     currentTable: table,
-                    currentColumn: table.questionRecordId,
+                    currentColumn: table.questionId,
                     referencedTable:
-                        $$ReviewLogsTableReferences._questionRecordIdTable(db),
-                    referencedColumn: $$ReviewLogsTableReferences
-                        ._questionRecordIdTable(db)
-                        .id,
+                        $$ReviewLogsTableReferences._questionIdTable(db),
+                    referencedColumn:
+                        $$ReviewLogsTableReferences._questionIdTable(db).id,
                   ) as T;
                 }
 
@@ -2709,17 +2713,19 @@ typedef $$ReviewLogsTableProcessedTableManager = ProcessedTableManager<
     $$ReviewLogsTableUpdateCompanionBuilder,
     (ReviewLog, $$ReviewLogsTableReferences),
     ReviewLog,
-    PrefetchHooks Function({bool questionRecordId})>;
+    PrefetchHooks Function({bool questionId})>;
 typedef $$SettingsEntriesTableCreateCompanionBuilder = SettingsEntriesCompanion
     Function({
   required String key,
   required String value,
+  required DateTime updatedAt,
   Value<int> rowid,
 });
 typedef $$SettingsEntriesTableUpdateCompanionBuilder = SettingsEntriesCompanion
     Function({
   Value<String> key,
   Value<String> value,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 
@@ -2737,6 +2743,9 @@ class $$SettingsEntriesTableFilterComposer
 
   ColumnFilters<String> get value => $composableBuilder(
       column: $table.value, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$SettingsEntriesTableOrderingComposer
@@ -2753,6 +2762,9 @@ class $$SettingsEntriesTableOrderingComposer
 
   ColumnOrderings<String> get value => $composableBuilder(
       column: $table.value, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$SettingsEntriesTableAnnotationComposer
@@ -2769,6 +2781,9 @@ class $$SettingsEntriesTableAnnotationComposer
 
   GeneratedColumn<String> get value =>
       $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$SettingsEntriesTableTableManager extends RootTableManager<
@@ -2800,21 +2815,25 @@ class $$SettingsEntriesTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> key = const Value.absent(),
             Value<String> value = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SettingsEntriesCompanion(
             key: key,
             value: value,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String key,
             required String value,
+            required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
               SettingsEntriesCompanion.insert(
             key: key,
             value: value,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,19 +31,14 @@ class SettingsScreen extends ConsumerWidget {
               children: <Widget>[
                 const Text('深色模式', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment(value: ThemeMode.system, label: Text('系统')),
-                      ButtonSegment(value: ThemeMode.light, label: Text('浅色')),
-                      ButtonSegment(value: ThemeMode.dark, label: Text('深色')),
-                    ],
-                    selected: {themeMode},
-                    onSelectionChanged: (set) {
-                      ref.read(themeModeProvider.notifier).setMode(set.first);
-                    },
-                  ),
+                Row(
+                  children: <Widget>[
+                    _ThemeButton(label: '系统', icon: CupertinoIcons.device_phone_portrait, isSelected: themeMode == ThemeMode.system, onTap: () => ref.read(themeModeProvider.notifier).setMode(ThemeMode.system)),
+                    const SizedBox(width: 8),
+                    _ThemeButton(label: '浅色', icon: CupertinoIcons.sun_max, isSelected: themeMode == ThemeMode.light, onTap: () => ref.read(themeModeProvider.notifier).setMode(ThemeMode.light)),
+                    const SizedBox(width: 8),
+                    _ThemeButton(label: '深色', icon: CupertinoIcons.moon, isSelected: themeMode == ThemeMode.dark, onTap: () => ref.read(themeModeProvider.notifier).setMode(ThemeMode.dark)),
+                  ],
                 ),
               ],
             ),
@@ -65,7 +61,7 @@ class SettingsScreen extends ConsumerWidget {
                   color: const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: const Icon(Icons.notifications_outlined, size: 18, color: Color(0xFFF97316)),
+                child: const Icon(CupertinoIcons.bell, size: 18, color: Color(0xFFF97316)),
               ),
               title: const Text('复习提醒', style: TextStyle(fontSize: 14)),
               subtitle: Text('发送待复习错题通知', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
@@ -100,7 +96,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               children: <Widget>[
                 _SettingsListItem(
-                  icon: Icons.smart_toy_outlined,
+                  icon: CupertinoIcons.sparkles,
                   iconColor: const Color(0xFF6366F1),
                   iconBg: const Color(0xFFEEF2FF),
                   title: 'AI 服务商配置',
@@ -108,7 +104,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 Divider(height: 1, indent: 56, color: Colors.grey.shade100),
                 _SettingsListItem(
-                  icon: Icons.edit_note_outlined,
+                  icon: CupertinoIcons.pencil,
                   iconColor: const Color(0xFFD97706),
                   iconBg: const Color(0xFFFFFBEB),
                   title: '提示词设置',
@@ -130,7 +126,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               children: <Widget>[
                 _SettingsListItem(
-                  icon: Icons.category_outlined,
+                  icon: CupertinoIcons.folder,
                   iconColor: const Color(0xFF16A34A),
                   iconBg: const Color(0xFFF0FDF4),
                   title: '科目管理',
@@ -138,7 +134,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 Divider(height: 1, indent: 56, color: Colors.grey.shade100),
                 _SettingsListItem(
-                  icon: Icons.storage_outlined,
+                  icon: CupertinoIcons.tray,
                   iconColor: const Color(0xFFEA580C),
                   iconBg: const Color(0xFFFFF7ED),
                   title: '数据管理',
@@ -201,8 +197,42 @@ class _SettingsListItem extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 22, color: Colors.grey.shade300),
+            Icon(CupertinoIcons.chevron_right, size: 22, color: Colors.grey.shade300),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeButton extends StatelessWidget {
+  const _ThemeButton({required this.label, required this.icon, required this.isSelected, required this.onTap});
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade200),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(icon, size: 20, color: isSelected ? Colors.white : Colors.grey.shade600),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : Colors.grey.shade700)),
+            ],
+          ),
         ),
       ),
     );

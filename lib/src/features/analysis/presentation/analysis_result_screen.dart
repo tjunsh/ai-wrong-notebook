@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,14 +14,26 @@ class AnalysisResultScreen extends ConsumerWidget {
 
     if (record == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('AI 解析结果')),
+        appBar: AppBar(
+          title: const Text('AI 解析结果'),
+          leading: IconButton(
+            icon: const Icon(CupertinoIcons.chevron_left),
+            onPressed: () => context.go('/capture/ocr-confirmation'),
+          ),
+        ),
         body: const Center(child: Text('未找到错题记录')),
       );
     }
 
     final result = record.analysisResult;
     return Scaffold(
-      appBar: AppBar(title: const Text('AI 解析结果')),
+      appBar: AppBar(
+        title: const Text('AI 解析结果'),
+        leading: IconButton(
+          icon: const Icon(CupertinoIcons.chevron_left),
+          onPressed: () => context.go('/capture/ocr-confirmation'),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: <Widget>[
@@ -46,7 +59,7 @@ class AnalysisResultScreen extends ConsumerWidget {
                 if (File(record.imagePath).existsSync())
                   GestureDetector(
                     onTap: () => _showFullImage(context, record.imagePath),
-                    child: Icon(Icons.image_outlined, size: 18, color: Colors.grey.shade400),
+                    child: Icon(CupertinoIcons.photo, size: 18, color: Colors.grey.shade400),
                   ),
               ],
             ),
@@ -61,7 +74,7 @@ class AnalysisResultScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             // Answer
             _SectionCard(
-              icon: Icons.check_circle,
+              icon: CupertinoIcons.checkmark_circle,
               iconColor: const Color(0xFF16A34A),
               bg: const Color(0xFFF0FDF4),
               border: const Color(0xFFBBF7D0),
@@ -74,7 +87,7 @@ class AnalysisResultScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             // Mistake reason
             _SectionCard(
-              icon: Icons.error_outline,
+              icon: CupertinoIcons.exclamationmark_triangle,
               iconColor: const Color(0xFFEA580C),
               bg: const Color(0xFFFFF7ED),
               border: const Color(0xFFFED7AA),
@@ -86,7 +99,7 @@ class AnalysisResultScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             // Study advice
             _SectionCard(
-              icon: Icons.lightbulb_outline,
+              icon: CupertinoIcons.lightbulb,
               iconColor: const Color(0xFFD97706),
               bg: const Color(0xFFFFFBEB),
               border: const Color(0xFFFDE68A),
@@ -180,9 +193,9 @@ class AnalysisResultScreen extends ConsumerWidget {
                           ),
                           const Spacer(),
                           if (e.isCorrect == true)
-                            const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18)
+                            const Icon(CupertinoIcons.checkmark_circle, color: Color(0xFF16A34A), size: 18)
                           else if (e.isCorrect == false)
-                            const Icon(Icons.cancel, color: Color(0xFFEA580C), size: 18),
+                            const Icon(CupertinoIcons.xmark_circle, color: Color(0xFFEA580C), size: 18),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -190,7 +203,7 @@ class AnalysisResultScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: <Widget>[
-                          Icon(Icons.lightbulb_outline, size: 14, color: Colors.grey.shade400),
+                          Icon(CupertinoIcons.lightbulb, size: 14, color: Colors.grey.shade400),
                           const SizedBox(width: 4),
                           Text('答案：${e.answer}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                         ],

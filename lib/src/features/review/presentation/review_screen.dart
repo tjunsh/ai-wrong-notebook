@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -55,10 +56,10 @@ class ReviewScreen extends ConsumerWidget {
               ),
               child: Row(
                 children: <Widget>[
-                  Icon(Icons.history, size: 20, color: Colors.grey.shade600),
+                  Icon(CupertinoIcons.clock, size: 20, color: Colors.grey.shade600),
                   const SizedBox(width: 12),
                   const Expanded(child: Text('复习记录', style: TextStyle(fontSize: 15))),
-                  Icon(Icons.chevron_right, size: 22, color: Colors.grey.shade300),
+                  Icon(CupertinoIcons.chevron_right, size: 22, color: Colors.grey.shade300),
                 ],
               ),
             ),
@@ -151,7 +152,7 @@ class _TodayBanner extends StatelessWidget {
               color: const Color(0xFFFFEDD5),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.refresh, color: Color(0xFFF97316), size: 20),
+            child: const Icon(CupertinoIcons.arrow_2_circlepath, color: Color(0xFFF97316), size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -163,7 +164,7 @@ class _TodayBanner extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: Color(0xFFF97316), size: 22),
+          const Icon(CupertinoIcons.chevron_right, color: Color(0xFFF97316), size: 22),
         ],
       ),
     );
@@ -182,7 +183,7 @@ class _EmptyCard extends StatelessWidget {
       ),
       child: Column(
         children: <Widget>[
-          Icon(Icons.celebration, size: 48, color: Colors.green.shade300),
+          Icon(CupertinoIcons.star, size: 48, color: Colors.green.shade300),
           const SizedBox(height: 12),
           const Text('太棒了！', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 4),
@@ -224,7 +225,7 @@ class _ReviewCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(Icons.quiz_outlined, size: 18, color: color),
+                child: Icon(CupertinoIcons.question, size: 18, color: color),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -245,7 +246,7 @@ class _ReviewCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey.shade300, size: 22),
+              Icon(CupertinoIcons.chevron_right, color: Colors.grey.shade300, size: 22),
             ],
           ),
         ),
