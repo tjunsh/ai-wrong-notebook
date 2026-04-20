@@ -10,6 +10,31 @@ class AnalysisResult {
     required this.generatedExercises,
   });
 
+  factory AnalysisResult.fromJson(Map<String, dynamic> json) {
+    return AnalysisResult(
+      finalAnswer: json['finalAnswer'] as String? ?? '',
+      steps: List<String>.from(json['steps'] as List? ?? []),
+      knowledgePoints: List<String>.from(json['knowledgePoints'] as List? ?? []),
+      mistakeReason: json['mistakeReason'] as String? ?? '',
+      studyAdvice: json['studyAdvice'] as String? ?? '',
+      generatedExercises: (json['generatedExercises'] as List?)
+              ?.map((e) => GeneratedExercise.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'finalAnswer': finalAnswer,
+      'steps': steps,
+      'knowledgePoints': knowledgePoints,
+      'mistakeReason': mistakeReason,
+      'studyAdvice': studyAdvice,
+      'generatedExercises': generatedExercises.map((e) => e.toJson()).toList(),
+    };
+  }
+
   final String finalAnswer;
   final List<String> steps;
   final List<String> knowledgePoints;

@@ -8,6 +8,28 @@ class GeneratedExercise {
     this.isCorrect,
   });
 
+  factory GeneratedExercise.fromJson(Map<String, dynamic> json) {
+    return GeneratedExercise(
+      id: json['id'] as String? ?? '',
+      difficulty: json['difficulty'] as String? ?? '',
+      question: json['question'] as String? ?? '',
+      answer: json['answer'] as String? ?? '',
+      explanation: json['explanation'] as String? ?? '',
+      isCorrect: json['isCorrect'] as bool?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'difficulty': difficulty,
+      'question': question,
+      'answer': answer,
+      'explanation': explanation,
+      'isCorrect': isCorrect,
+    };
+  }
+
   final String id;
   final String difficulty;
   final String question;

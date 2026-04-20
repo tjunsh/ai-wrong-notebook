@@ -18,8 +18,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase? _instance;
 
   factory AppDatabase() {
-    if (_instance != null) return _instance!;
-    _instance = AppDatabase._internal(_openConnection());
+    _instance ??= AppDatabase._internal(_openConnection());
     return _instance!;
   }
 
@@ -34,7 +33,6 @@ LazyDatabase _openConnection() {
       final file = File(p.join(dbFolder.path, 'smart_wrong_notebook.db'));
       return NativeDatabase.createInBackground(file);
     } catch (e) {
-      // Fall back to in-memory database if file-based fails
       return NativeDatabase.memory();
     }
   });

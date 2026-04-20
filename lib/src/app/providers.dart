@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
-import 'package:smart_wrong_notebook/src/data/repositories/drift_question_repository.dart';
-import 'package:smart_wrong_notebook/src/data/repositories/drift_review_log_repository.dart';
-import 'package:smart_wrong_notebook/src/data/repositories/drift_settings_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_settings_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 import 'package:smart_wrong_notebook/src/domain/repositories/review_log_repository.dart';
@@ -16,18 +15,19 @@ import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 
-// --- Repository providers ---
+// --- Repository providers (default implementations) ---
 
 final Provider<QuestionRepository> questionRepositoryProvider = Provider<QuestionRepository>((ref) {
-  return DriftQuestionRepository();
+  return SharedPrefsQuestionRepository();
 });
 
 final Provider<SettingsRepository> settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
-  return DriftSettingsRepository();
+  return SharedPrefsSettingsRepository();
 });
 
+// ReviewLogRepository - using SharedPrefsQuestionRepository as base for now
 final Provider<ReviewLogRepository> reviewLogRepositoryProvider = Provider<ReviewLogRepository>((ref) {
-  return DriftReviewLogRepository();
+  throw UnimplementedError('ReviewLogRepository not yet implemented with SharedPreferences');
 });
 
 // --- Service providers ---

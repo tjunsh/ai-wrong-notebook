@@ -46,6 +46,57 @@ class QuestionRecord {
     );
   }
 
+  factory QuestionRecord.fromJson(Map<String, dynamic> json) {
+    return QuestionRecord(
+      id: json['id'] as String? ?? '',
+      imagePath: json['imagePath'] as String? ?? '',
+      subject: Subject.values.firstWhere(
+        (s) => s.name == json['subject'],
+        orElse: () => Subject.math,
+      ),
+      recognizedText: json['recognizedText'] as String? ?? '',
+      correctedText: json['correctedText'] as String? ?? '',
+      tags: List<String>.from(json['tags'] as List? ?? []),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+      lastReviewedAt: json['lastReviewedAt'] != null
+          ? DateTime.tryParse(json['lastReviewedAt'] as String)
+          : null,
+      reviewCount: json['reviewCount'] as int? ?? 0,
+      isFavorite: json['isFavorite'] as bool? ?? false,
+      contentStatus: ContentStatus.values.firstWhere(
+        (s) => s.name == json['contentStatus'],
+        orElse: () => ContentStatus.processing,
+      ),
+      masteryLevel: MasteryLevel.values.firstWhere(
+        (m) => m.name == json['masteryLevel'],
+        orElse: () => MasteryLevel.newQuestion,
+      ),
+      analysisResult: json['analysisResult'] != null
+          ? AnalysisResult.fromJson(json['analysisResult'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'imagePath': imagePath,
+      'subject': subject.name,
+      'recognizedText': recognizedText,
+      'correctedText': correctedText,
+      'tags': tags,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'lastReviewedAt': lastReviewedAt?.toIso8601String(),
+      'reviewCount': reviewCount,
+      'isFavorite': isFavorite,
+      'contentStatus': contentStatus.name,
+      'masteryLevel': masteryLevel.name,
+      'analysisResult': analysisResult?.toJson(),
+    };
+  }
+
   final String id;
   final String imagePath;
   final Subject subject;
