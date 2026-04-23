@@ -15,7 +15,13 @@ class ReviewHistoryScreen extends ConsumerWidget {
     final logsAsync = ref.watch(_reviewLogsWithQuestionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('复习记录')),
+      appBar: AppBar(
+        title: const Text('复习记录'),
+        leading: IconButton(
+          icon: const Icon(CupertinoIcons.chevron_left),
+          onPressed: () => context.go('/review'),
+        ),
+      ),
       body: logsAsync.when(
         data: (entries) => entries.isEmpty
             ? _EmptyHistoryCard()
