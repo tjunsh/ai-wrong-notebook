@@ -25,6 +25,7 @@
 | 状态管理 | Riverpod |
 | 路由 | GoRouter |
 | 本地数据库 | Drift (SQLite) |
+| 轻量存储 | SharedPreferences |
 | 网络请求 | Dio |
 | 主题方案 | flex_color_scheme |
 | 图表 | fl_chart |
