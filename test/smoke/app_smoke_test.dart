@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,8 +82,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.search), findsOneWidget);
-      expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.search), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.camera), findsOneWidget);
     });
 
     testWidgets('review screen shows today review section', (tester) async {
@@ -105,9 +106,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('拍照'), findsOneWidget);
-      expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.camera), findsOneWidget);
       expect(find.text('相册'), findsOneWidget);
-      expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.photo), findsOneWidget);
     });
 
     testWidgets('onboarding screen shows three pages with skip and next', (tester) async {
@@ -117,7 +118,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('智能错题本'), findsOneWidget);
+      expect(find.text('AI错题本'), findsOneWidget);
       expect(find.text('拍照录题'), findsOneWidget);
       expect(find.text('跳过'), findsOneWidget);
       expect(find.text('下一步'), findsOneWidget);

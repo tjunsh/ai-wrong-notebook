@@ -11,6 +11,16 @@ class InMemorySettingsRepository implements SettingsRepository {
   AiProviderConfig? _config;
   final Map<String, String> _strings = {};
 
+  InMemorySettingsRepository() {
+    _config = AiProviderConfig(
+      id: 'test',
+      displayName: 'Test',
+      baseUrl: 'https://api.test.com',
+      model: 'test-model',
+      apiKey: 'test-key',
+    );
+  }
+
   @override
   Future<AiProviderConfig?> getAiProviderConfig() async => _config;
 

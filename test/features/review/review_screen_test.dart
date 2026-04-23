@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,7 +47,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('复习记录'), findsOneWidget);
-      expect(find.byIcon(Icons.chevron_right), findsWidgets);
+      expect(find.byIcon(CupertinoIcons.chevron_right), findsWidgets);
     });
   });
 }

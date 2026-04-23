@@ -42,8 +42,7 @@ class AiAnalysisService {
     }
   }
 
-  factory AiAnalysisService.fake() =>
-      AiAnalysisService(settingsRepository: InMemorySettingsRepository());
+  factory AiAnalysisService.fake() => _FakeAiAnalysisService();
 
   Dio _createClient(AiProviderConfig config) {
     return Dio(BaseOptions(
@@ -601,6 +600,29 @@ $correctedText
         ),
       ],
     );
+  }
+}
+
+class _FakeAiAnalysisService extends AiAnalysisService {
+  _FakeAiAnalysisService() : super(settingsRepository: InMemorySettingsRepository());
+
+  @override
+  Future<AnalysisResult> analyzeQuestion({
+    required String correctedText,
+    required String subjectName,
+    String? imagePath,
+  }) async {
+    return _fakeResult();
+  }
+
+  @override
+  Future<bool> judgeAnswer({
+    required String question,
+    required String userAnswer,
+    required String correctAnswer,
+    List<String>? options,
+  }) async {
+    return userAnswer == correctAnswer;
   }
 }
 
