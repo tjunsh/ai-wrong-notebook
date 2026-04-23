@@ -38,12 +38,12 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build release APK
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
+          name: ai-wrong-notebook-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
