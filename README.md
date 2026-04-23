@@ -19,13 +19,25 @@
 
 ## 技术栈
 
-- **框架**: Flutter 3.4+
-- **状态管理**: Riverpod
-- **路由**: GoRouter
-- **本地存储**: Drift (SQLite)
-- **AI 服务**: 兼容 OpenAI 格式 API（支持 Vision 模型，如 DeepSeek、GPT-4o 等）
-- **图片裁剪**: image_cropper
-- **图片选择**: image_picker
+| 分类 | 技术 |
+|------|------|
+| 框架 | Flutter 3.4+ |
+| 状态管理 | Riverpod |
+| 路由 | GoRouter |
+| 本地数据库 | Drift (SQLite) |
+| 网络请求 | Dio |
+| 主题方案 | flex_color_scheme |
+| 图表 | fl_chart |
+| AI 服务 | 兼容 OpenAI 格式 API（支持 Vision 模型，如 DeepSeek、GPT-4o 等）|
+| 图片选择 | image_picker |
+| 图片裁剪 | image_cropper |
+| 数据导入导出 | share_plus + file_picker |
+| 本地通知 | flutter_local_notifications |
+| 安全存储 | flutter_secure_storage |
+| 轻量存储 | SharedPreferences |
+| 序列化 | json_annotation + json_serializable |
+| ID 生成 | uuid |
+| 国际化 | intl |
 
 ## 项目结构
 
@@ -36,8 +48,8 @@ lib/
 ├── data/                 # 数据层
 │   ├── files/           # 文件存储
 │   ├── remote/ai/       # AI 分析服务
-│   ├── repositories/    # 数据仓库（Drift）
-│   └── services/        # 服务（拍照、存储等）
+│   ├── repositories/    # 数据仓库（Drift + SharedPreferences）
+│   └── services/        # 服务（拍照、存储、通知等）
 ├── domain/models/       # 领域模型
 └── features/           # 功能模块
     ├── analysis/        # AI 分析（加载 + 结果展示）
