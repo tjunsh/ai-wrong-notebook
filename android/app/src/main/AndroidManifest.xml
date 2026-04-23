@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
-        android:label="智能错题本"
+        android:label="AI错题本"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

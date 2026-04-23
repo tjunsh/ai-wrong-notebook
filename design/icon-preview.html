@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>App Icon Preview - AI错题本</title>
+<style>
+  body { background: #f0f0f0; display: flex; flex-wrap: wrap; gap: 50px; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; padding: 40px 20px; }
+  .icon-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .icon { position: relative; width: 256px; height: 256px; border-radius: 56px; overflow: hidden; box-shadow: 0 8px 32px rgba(99,102,241,0.3); }
+  .icon svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .label { color: #333; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- 方案 1: AI 亮色高亮 -->
+<div class="icon-wrap">
+  <div style="font-size:18px;font-weight:bold;color:#333">方案 1: AI 亮色突出</div>
+  <div class="icon" style="background: linear-gradient(135deg, #6366F1, #8B5CF6);">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <rect x="138" y="100" width="236" height="260" rx="14" fill="#3730A3" opacity="0.25"/>
+      <rect x="130" y="92" width="236" height="260" rx="14" fill="#FFFFFF"/>
+      <path d="M 338 92 L 366 120 L 366 92 Z" fill="#E2E8F0"/>
+      <path d="M 338 92 L 366 120 L 338 120 Z" fill="#CBD5E1"/>
+      <rect x="166" y="138" width="110" height="10" rx="5" fill="#CBD5E1"/>
+      <rect x="166" y="162" width="150" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="186" width="130" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="210" width="100" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="234" width="140" height="10" rx="5" fill="#E2E8F0"/>
+      <!-- AI 亮色 + 错题本白色 -->
+      <text x="256" y="435" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-weight="bold">
+        <tspan fill="#E0E7FF" font-size="56" letter-spacing="2">AI</tspan>
+        <tspan fill="#FFFFFF" font-size="48" letter-spacing="4">错题本</tspan>
+      </text>
+      <g fill="none" stroke-linecap="round">
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#A5B4FC" stroke-width="10" opacity="0.5"/>
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#C7D2FE" stroke-width="6"/>
+      </g>
+    </svg>
+  </div>
+  <div class="label">AI 亮紫色 + 错题本白色</div>
+</div>
+
+<!-- 方案 2: AI 加粗放大 -->
+<div class="icon-wrap">
+  <div style="font-size:18px;font-weight:bold;color:#333">方案 2: AI 加粗放大</div>
+  <div class="icon" style="background: linear-gradient(135deg, #6366F1, #8B5CF6);">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <rect x="138" y="100" width="236" height="260" rx="14" fill="#3730A3" opacity="0.25"/>
+      <rect x="130" y="92" width="236" height="260" rx="14" fill="#FFFFFF"/>
+      <path d="M 338 92 L 366 120 L 366 92 Z" fill="#E2E8F0"/>
+      <path d="M 338 92 L 366 120 L 338 120 Z" fill="#CBD5E1"/>
+      <rect x="166" y="138" width="110" height="10" rx="5" fill="#CBD5E1"/>
+      <rect x="166" y="162" width="150" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="186" width="130" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="210" width="100" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="234" width="140" height="10" rx="5" fill="#E2E8F0"/>
+      <!-- AI 大号加粗 + 错题本正常 -->
+      <text x="256" y="435" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-weight="bold">
+        <tspan fill="#FFFFFF" font-size="64" letter-spacing="2">AI</tspan>
+        <tspan fill="rgba(255,255,255,0.85)" font-size="44" letter-spacing="4">错题本</tspan>
+      </text>
+      <g fill="none" stroke-linecap="round">
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#A5B4FC" stroke-width="10" opacity="0.5"/>
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#C7D2FE" stroke-width="6"/>
+      </g>
+    </svg>
+  </div>
+  <div class="label">AI 64px 加粗 + 错题本 44px 半透明</div>
+</div>
+
+<!-- 方案 3: AI 带胶囊底 -->
+<div class="icon-wrap">
+  <div style="font-size:18px;font-weight:bold;color:#333">方案 3: AI 胶囊标签</div>
+  <div class="icon" style="background: linear-gradient(135deg, #6366F1, #8B5CF6);">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <rect x="138" y="100" width="236" height="260" rx="14" fill="#3730A3" opacity="0.25"/>
+      <rect x="130" y="92" width="236" height="260" rx="14" fill="#FFFFFF"/>
+      <path d="M 338 92 L 366 120 L 366 92 Z" fill="#E2E8F0"/>
+      <path d="M 338 92 L 366 120 L 338 120 Z" fill="#CBD5E1"/>
+      <rect x="166" y="138" width="110" height="10" rx="5" fill="#CBD5E1"/>
+      <rect x="166" y="162" width="150" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="186" width="130" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="210" width="100" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="234" width="140" height="10" rx="5" fill="#E2E8F0"/>
+      <!-- AI 胶囊 + 错题本 -->
+      <rect x="178" y="385" width="156" height="52" rx="26" fill="rgba(255,255,255,0.15)"/>
+      <text x="256" y="420" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-weight="bold">
+        <tspan fill="#E0E7FF" font-size="38" letter-spacing="1">AI</tspan>
+        <tspan fill="#FFFFFF" font-size="38" letter-spacing="2">错题本</tspan>
+      </text>
+      <g fill="none" stroke-linecap="round">
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#A5B4FC" stroke-width="10" opacity="0.5"/>
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#C7D2FE" stroke-width="6"/>
+      </g>
+    </svg>
+  </div>
+  <div class="label">半透明胶囊底 + AI 亮色 + 错题本白色</div>
+</div>
+
+<!-- 方案 4: 全白色 + AI稍大 -->
+<div class="icon-wrap">
+  <div style="font-size:18px;font-weight:bold;color:#333">方案 4: 全白色 AI稍大</div>
+  <div class="icon" style="background: linear-gradient(135deg, #6366F1, #8B5CF6);">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <rect x="138" y="100" width="236" height="260" rx="14" fill="#3730A3" opacity="0.25"/>
+      <rect x="130" y="92" width="236" height="260" rx="14" fill="#FFFFFF"/>
+      <path d="M 338 92 L 366 120 L 366 92 Z" fill="#E2E8F0"/>
+      <path d="M 338 92 L 366 120 L 338 120 Z" fill="#CBD5E1"/>
+      <rect x="166" y="138" width="110" height="10" rx="5" fill="#CBD5E1"/>
+      <rect x="166" y="162" width="150" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="186" width="130" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="210" width="100" height="10" rx="5" fill="#E2E8F0"/>
+      <rect x="166" y="234" width="140" height="10" rx="5" fill="#E2E8F0"/>
+      <text x="256" y="435" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-weight="bold">
+        <tspan fill="#FFFFFF" font-size="48" letter-spacing="3">AI</tspan>
+        <tspan fill="#FFFFFF" font-size="48" letter-spacing="4">错题本</tspan>
+      </text>
+      <g fill="none" stroke-linecap="round">
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#A5B4FC" stroke-width="10" opacity="0.5"/>
+        <path d="M 340 30 L 340 280 C 340 310 320 328 296 328 C 272 328 252 310 252 280 L 252 80 C 252 58 270 42 290 42 C 310 42 326 58 326 80 L 326 245" stroke="#C7D2FE" stroke-width="6"/>
+      </g>
+    </svg>
+  </div>
+  <div class="label">AI 48px + 错题本 48px，全白色统一</div>
+</div>
+
+</body>
+</html>
