@@ -138,7 +138,7 @@ class _OnboardPage extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           Text(
-            '智能错题本',
+            'AI错题本',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),

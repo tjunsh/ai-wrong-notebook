@@ -58,7 +58,7 @@ void main() async {
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
       ],
       child: MaterialApp.router(
-        title: '智能错题本',
+        title: 'AI错题本',
         theme: buildLightTheme(),
         darkTheme: buildDarkTheme(),
         themeMode: ThemeMode.light,

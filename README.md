@@ -1,4 +1,4 @@
-# 智能错题本 (Smart Wrong Notebook)
+# AI错题本 (AI Wrong Notebook)
 
 一款面向学生的智能错题管理应用，支持拍照录题、AI 视觉分析、举一反三练习和间隔复习。
 

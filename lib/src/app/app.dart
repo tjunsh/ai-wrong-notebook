@@ -11,7 +11,7 @@ class SmartWrongNotebookApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: '智能错题本',
+      title: 'AI错题本',
       theme: buildLightTheme(),
       darkTheme: buildDarkTheme(),
       themeMode: ThemeMode.light,

@@ -91,7 +91,7 @@ void main() async {
       ],
       child: Consumer(
         builder: (context, ref, _) => MaterialApp.router(
-          title: '智能错题本',
+          title: 'AI错题本',
           theme: buildLightTheme(),
           darkTheme: buildDarkTheme(),
           themeMode: ref.watch(themeModeProvider),
