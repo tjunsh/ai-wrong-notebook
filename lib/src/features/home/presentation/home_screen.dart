@@ -16,60 +16,61 @@ class HomeScreen extends ConsumerWidget {
     final questionsAsync = ref.watch(questionListProvider);
     final dueAsync = ref.watch(dueReviewProvider);
 
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: <Widget>[
-        Text(
-          '开始拍错题',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => showModalBottomSheet<void>(
-            context: context,
-            builder: (_) => const CaptureEntrySheet(),
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        children: <Widget>[
+          Text(
+            '开始拍错题',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
-          icon: const Icon(CupertinoIcons.camera),
-          label: const Text('拍照录题'),
-          style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
-        ),
-        const SizedBox(height: 20),
-        dueAsync.when(
-          data: (due) => due.isNotEmpty
-              ? _ReviewBanner(count: due.length, onTap: () => context.go('/review'))
-              : const SizedBox.shrink(),
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 20),
-        Text('学习统计', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 12),
-        // RepaintBoundary to prevent stats grid from repainting when list scrolls
-        RepaintBoundary(
-          child: questionsAsync.when(
-            data: (questions) => _buildStatsSection(context, questions, dueAsync),
-            loading: () => const _StatsGridSkeleton(),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              builder: (_) => const CaptureEntrySheet(),
+            ),
+            icon: const Icon(CupertinoIcons.camera),
+            label: const Text('拍照录题'),
+            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
+          ),
+          const SizedBox(height: 20),
+          dueAsync.when(
+            data: (due) => due.isNotEmpty
+                ? _ReviewBanner(count: due.length, onTap: () => context.go('/review'))
+                : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 20),
+          Text('学习统计', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          RepaintBoundary(
+            child: questionsAsync.when(
+              data: (questions) => _buildStatsSection(context, questions, dueAsync),
+              loading: () => const _StatsGridSkeleton(),
+              error: (e, _) => Text('加载失败: $e'),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text('最近新增', style: Theme.of(context).textTheme.titleLarge),
+              TextButton(
+                onPressed: () => context.go('/notebook'),
+                child: const Text('查看全部'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          questionsAsync.when(
+            data: (questions) => _RecentList(questions: questions.take(5).toList(), ref: ref),
+            loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('加载失败: $e'),
           ),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Text('最近新增', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-            TextButton(
-              onPressed: () => context.go('/notebook'),
-              child: const Text('查看全部'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        questionsAsync.when(
-          data: (questions) => _RecentList(questions: questions.take(5).toList(), ref: ref),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('加载失败: $e'),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -282,7 +283,7 @@ class _ReviewBanner extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('今日待复习', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF92400E))),
+                    Text('今日待复习', style: Theme.of(context).textTheme.titleMedium),
                     Text('$count 道错题等待巩固', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
                   ],
                 ),

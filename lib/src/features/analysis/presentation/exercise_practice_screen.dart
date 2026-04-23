@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 
@@ -17,6 +18,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
   int _index = 0;
   List<GeneratedExercise>? _exercises;
   String? _questionId;
+  bool _isJudging = false;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +81,6 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
       ),
       body: Column(
         children: <Widget>[
-          // Progress
           LinearProgressIndicator(
             value: answeredCount / exercises.length,
             backgroundColor: Colors.grey.shade200,
@@ -89,7 +90,6 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: <Widget>[
-                // Meta row
                 Row(
                   children: <Widget>[
                     Container(
@@ -127,13 +127,91 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                // Options
+                if (exercise.options != null && exercise.options!.isNotEmpty)
+                  ...exercise.options!.asMap().entries.map((entry) {
+                    final option = entry.value;
+                    final optionLetter = option.substring(0, 1); // A, B, C, D
+                    final optionText = option.substring(3); // 选项内容
+                    final isSelected = exercise.userAnswer == optionLetter;
+                    final isCorrectAnswer = exercise.answer == optionLetter;
+
+                    Color? borderColor;
+                    Color? bgColor;
+                    Color? textColor;
+
+                    if (answered) {
+                      if (isCorrectAnswer) {
+                        borderColor = const Color(0xFF16A34A);
+                        bgColor = const Color(0xFFF0FDF4);
+                        textColor = const Color(0xFF166534);
+                      } else if (isSelected && !isCorrect) {
+                        borderColor = const Color(0xFFEA580C);
+                        bgColor = const Color(0xFFFFF7ED);
+                        textColor = const Color(0xFF9A3412);
+                      }
+                    } else if (isSelected) {
+                      borderColor = const Color(0xFF6366F1);
+                      bgColor = const Color(0xFFEEF2FF);
+                      textColor = const Color(0xFF4338CA);
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: GestureDetector(
+                        onTap: answered ? null : () => _selectOption(optionLetter),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: bgColor ?? Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: borderColor ?? Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            children: <Widget>[
+                              Container(
+                                width: 28, height: 28,
+                                decoration: BoxDecoration(
+                                  color: isSelected || (answered && isCorrectAnswer)
+                                      ? (borderColor ?? const Color(0xFF6366F1))
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    optionLetter,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected || (answered && isCorrectAnswer)
+                                          ? Colors.white
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(optionText, style: TextStyle(fontSize: 14, color: textColor ?? Colors.grey.shade800)),
+                              ),
+                              if (answered && isCorrectAnswer)
+                                const Icon(CupertinoIcons.checkmark_circle, color: Color(0xFF16A34A), size: 20)
+                              else if (answered && isSelected && !isCorrect)
+                                const Icon(CupertinoIcons.xmark_circle, color: Color(0xFFEA580C), size: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  })
+                else
+                  // Fallback: no options, show simple correct/wrong buttons
+                  const SizedBox.shrink(),
                 // Answer reveal
-                AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 250),
-                  crossFadeState: answered ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Container(
+                if (answered) ...<Widget>[
+                  const SizedBox(height: 16),
+                  Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: isCorrect ? const Color(0xFFF0FDF4) : const Color(0xFFFFF7ED),
@@ -161,7 +239,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text('答案：${exercise.answer}', style: TextStyle(fontSize: 15, color: Colors.grey.shade800)),
+                        Text('正确答案：${exercise.answer}', style: TextStyle(fontSize: 15, color: Colors.grey.shade800)),
                         if (exercise.explanation.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 8),
                           Text(exercise.explanation, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
@@ -169,11 +247,10 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                       ],
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
-          // Bottom action
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
@@ -190,34 +267,14 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                       label: Text(isLast ? '完成练习' : '下一题'),
                       style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
                     )
-                  : Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _markResult(exercises, _index, false),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
-                              minimumSize: const Size(0, 48),
-                            ),
-                            icon: const Icon(CupertinoIcons.xmark),
-                            label: const Text('做错了'),
-                          ),
+                  : _isJudging
+                      ? const Center(child: CircularProgressIndicator())
+                      : FilledButton.icon(
+                          onPressed: exercise.userAnswer != null ? () => _submitAnswer(exercises, _index) : null,
+                          style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+                          icon: const Icon(CupertinoIcons.checkmark),
+                          label: const Text('提交答案'),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: () => _markResult(exercises, _index, true),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF16A34A),
-                              minimumSize: const Size(0, 48),
-                            ),
-                            icon: const Icon(CupertinoIcons.checkmark),
-                            label: const Text('做对了'),
-                          ),
-                        ),
-                      ],
-                    ),
             ),
           ),
         ],
@@ -236,10 +293,56 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
     }
   }
 
-  void _markResult(List<GeneratedExercise> exercises, int index, bool correct) {
+  void _selectOption(String optionLetter) {
     setState(() {
-      exercises[index] = exercises[index].copyWith(isCorrect: correct);
+      _exercises![_index] = _exercises![_index].copyWith(userAnswer: optionLetter);
     });
+  }
+
+  void _submitAnswer(List<GeneratedExercise> exercises, int index) async {
+    final exercise = exercises[index];
+    if (exercise.userAnswer == null) return;
+
+    setState(() => _isJudging = true);
+
+    // AI 判断答案是否正确
+    final isCorrect = await _judgeAnswer(exercise);
+
+    setState(() {
+      exercises[index] = exercises[index].copyWith(isCorrect: isCorrect);
+      _isJudging = false;
+    });
+  }
+
+  Future<bool> _judgeAnswer(GeneratedExercise exercise) async {
+    // 获取当前题目的上下文用于 AI 判断
+    final current = ref.read(currentQuestionProvider);
+    if (current?.analysisResult == null) {
+      // Fallback: 直接比较答案
+      return exercise.userAnswer == exercise.answer;
+    }
+
+    try {
+      final settingsRepo = ref.read(settingsRepositoryProvider);
+      final config = await settingsRepo.getAiProviderConfig();
+
+      if (config == null || config.baseUrl.isEmpty || config.apiKey.isEmpty || config.model.isEmpty) {
+        // 没有配置，回退到直接比较
+        return exercise.userAnswer == exercise.answer;
+      }
+
+      final service = ref.read(aiAnalysisServiceProvider);
+      final isCorrect = await service.judgeAnswer(
+        question: exercise.question,
+        userAnswer: exercise.userAnswer!,
+        correctAnswer: exercise.answer,
+        options: exercise.options,
+      );
+      return isCorrect;
+    } catch (e) {
+      debugPrint('[ExercisePractice] AI judgment failed: $e, fallback to direct compare');
+      return exercise.userAnswer == exercise.answer;
+    }
   }
 
   Future<void> _finish(QuestionRecord question, List<GeneratedExercise> exercises) async {

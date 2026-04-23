@@ -86,7 +86,7 @@ void main() async {
       overrides: [
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         questionRepositoryProvider.overrideWithValue(questionRepo),
-        aiAnalysisServiceProvider.overrideWithValue(AiAnalysisService.fake()),
+        // 注意：不要 override aiAnalysisServiceProvider，让它使用 settingsRepo
         imageStorageServiceProvider.overrideWithValue(ImageStorageService()),
       ],
       child: Consumer(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_review_log_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_settings_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
@@ -22,12 +23,12 @@ final Provider<QuestionRepository> questionRepositoryProvider = Provider<Questio
 });
 
 final Provider<SettingsRepository> settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
-  return SharedPrefsSettingsRepository();
+  return SharedPrefsSettingsRepository.instance;
 });
 
-// ReviewLogRepository - using SharedPrefsQuestionRepository as base for now
+// ReviewLogRepository - stored in SharedPreferences
 final Provider<ReviewLogRepository> reviewLogRepositoryProvider = Provider<ReviewLogRepository>((ref) {
-  throw UnimplementedError('ReviewLogRepository not yet implemented with SharedPreferences');
+  return SharedPrefsReviewLogRepository();
 });
 
 // --- Service providers ---
@@ -91,6 +92,27 @@ final StateProvider<MasteryLevel?> selectedMasteryFilterProvider = StateProvider
 
 final StateProvider<String> searchQueryProvider = StateProvider<String>((ref) => '');
 
+final StateProvider<String?> selectedKnowledgePointFilterProvider = StateProvider<String?>((ref) => null);
+
+// 多选标签过滤
+final StateProvider<List<String>> selectedTagsFilterProvider = StateProvider<List<String>>((ref) => []);
+
+// --- All tags provider ---
+final FutureProvider<List<String>> allTagsProvider = FutureProvider<List<String>>((ref) async {
+  ref.watch(_listVersionProvider);
+  final all = await ref.read(questionRepositoryProvider).listAll();
+  final tags = <String>{};
+  for (final q in all) {
+    // 添加 AI 短标签
+    tags.addAll(q.aiTags);
+    // 添加 AI 知识点
+    tags.addAll(q.aiKnowledgePoints);
+    // 添加自定义标签
+    tags.addAll(q.customTags);
+  }
+  return tags.toList()..sort();
+});
+
 // --- Filtered notebook list ---
 
 final FutureProvider<List<QuestionRecord>> filteredQuestionListProvider = FutureProvider<List<QuestionRecord>>((ref) async {
@@ -100,11 +122,25 @@ final FutureProvider<List<QuestionRecord>> filteredQuestionListProvider = Future
   final subject = ref.watch(selectedSubjectFilterProvider);
   final mastery = ref.watch(selectedMasteryFilterProvider);
   final query = ref.watch(searchQueryProvider).toLowerCase();
+  final knowledgePoint = ref.watch(selectedKnowledgePointFilterProvider);
+  final selectedTags = ref.watch(selectedTagsFilterProvider);
 
   return all.where((QuestionRecord q) {
     if (subject != null && q.subject != subject) return false;
     if (mastery != null && q.masteryLevel != mastery) return false;
     if (query.isNotEmpty && !q.correctedText.toLowerCase().contains(query)) return false;
+    // AI 知识点过滤：匹配任意一个知识点
+    if (knowledgePoint != null && knowledgePoint.isNotEmpty) {
+      final kps = q.aiKnowledgePoints;
+      if (!kps.any((kp) => kp.contains(knowledgePoint))) return false;
+    }
+    // 多选标签过滤：必须包含所有选中的标签
+    if (selectedTags.isNotEmpty) {
+      final allQTags = [...q.aiKnowledgePoints, ...q.customTags];
+      for (final tag in selectedTags) {
+        if (!allQTags.any((t) => t.contains(tag))) return false;
+      }
+    }
     return true;
   }).toList();
 });

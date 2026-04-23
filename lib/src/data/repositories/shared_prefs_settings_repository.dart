@@ -4,6 +4,11 @@ import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.d
 import 'package:smart_wrong_notebook/src/domain/models/ai_provider_config.dart';
 
 class SharedPrefsSettingsRepository implements SettingsRepository {
+  SharedPrefsSettingsRepository._();
+
+  static final SharedPrefsSettingsRepository _instance = SharedPrefsSettingsRepository._();
+  static SharedPrefsSettingsRepository get instance => _instance;
+
   SharedPreferences? _prefs;
 
   Future<SharedPreferences> get _preferences async {

@@ -89,6 +89,29 @@ class $QuestionRecordsTable extends QuestionRecords
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _aiTagsMeta = const VerificationMeta('aiTags');
+  @override
+  late final GeneratedColumn<String> aiTags = GeneratedColumn<String>(
+      'ai_tags', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _aiKnowledgePointsMeta =
+      const VerificationMeta('aiKnowledgePoints');
+  @override
+  late final GeneratedColumn<String> aiKnowledgePoints =
+      GeneratedColumn<String>('ai_knowledge_points', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(''));
+  static const VerificationMeta _customTagsMeta =
+      const VerificationMeta('customTags');
+  @override
+  late final GeneratedColumn<String> customTags =
+      GeneratedColumn<String>('custom_tags', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(''));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -103,7 +126,10 @@ class $QuestionRecordsTable extends QuestionRecords
         createdAt,
         updatedAt,
         aiAnalysisJson,
-        tags
+        tags,
+        aiTags,
+        aiKnowledgePoints,
+        customTags
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -233,6 +259,8 @@ class $QuestionRecordsTable extends QuestionRecords
           DriftSqlType.string, data['${effectivePrefix}ai_analysis_json']),
       tags: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}tags'])!,
+      aiTags: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ai_tags'])!,
     );
   }
 
@@ -256,6 +284,9 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
   final DateTime updatedAt;
   final String? aiAnalysisJson;
   final String tags;
+  final String aiTags;
+  final String aiKnowledgePoints;
+  final String customTags;
   const QuestionRecord(
       {required this.id,
       required this.subject,
@@ -269,7 +300,10 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
       required this.createdAt,
       required this.updatedAt,
       this.aiAnalysisJson,
-      required this.tags});
+      required this.tags,
+      this.aiTags = '',
+      this.aiKnowledgePoints = '',
+      this.customTags = ''});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -292,6 +326,9 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
       map['ai_analysis_json'] = Variable<String>(aiAnalysisJson);
     }
     map['tags'] = Variable<String>(tags);
+    map['ai_tags'] = Variable<String>(aiTags);
+    map['ai_knowledge_points'] = Variable<String>(aiKnowledgePoints);
+    map['custom_tags'] = Variable<String>(customTags);
     return map;
   }
 
@@ -316,6 +353,7 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
           ? const Value.absent()
           : Value(aiAnalysisJson),
       tags: Value(tags),
+      aiTags: Value(aiTags),
     );
   }
 
@@ -337,6 +375,7 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       aiAnalysisJson: serializer.fromJson<String?>(json['aiAnalysisJson']),
       tags: serializer.fromJson<String>(json['tags']),
+      aiTags: serializer.fromJson<String>(json['aiTags']),
     );
   }
   @override
@@ -356,6 +395,7 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'aiAnalysisJson': serializer.toJson<String?>(aiAnalysisJson),
       'tags': serializer.toJson<String>(tags),
+      'aiTags': serializer.toJson<String>(aiTags),
     };
   }
 
@@ -372,7 +412,8 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<String?> aiAnalysisJson = const Value.absent(),
-          String? tags}) =>
+          String? tags,
+          String? aiTags}) =>
       QuestionRecord(
         id: id ?? this.id,
         subject: subject ?? this.subject,
@@ -391,6 +432,7 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
         aiAnalysisJson:
             aiAnalysisJson.present ? aiAnalysisJson.value : this.aiAnalysisJson,
         tags: tags ?? this.tags,
+        aiTags: aiTags ?? this.aiTags,
       );
   QuestionRecord copyWithCompanion(QuestionRecordsCompanion data) {
     return QuestionRecord(
@@ -422,6 +464,7 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
           ? data.aiAnalysisJson.value
           : this.aiAnalysisJson,
       tags: data.tags.present ? data.tags.value : this.tags,
+      aiTags: data.aiTags.present ? data.aiTags.value : this.aiTags,
     );
   }
 
@@ -459,7 +502,10 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
       createdAt,
       updatedAt,
       aiAnalysisJson,
-      tags);
+      tags,
+      aiTags,
+      aiKnowledgePoints,
+      customTags);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -476,7 +522,10 @@ class QuestionRecord extends DataClass implements Insertable<QuestionRecord> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.aiAnalysisJson == this.aiAnalysisJson &&
-          other.tags == this.tags);
+          other.tags == this.tags &&
+          other.aiTags == this.aiTags &&
+          other.aiKnowledgePoints == this.aiKnowledgePoints &&
+          other.customTags == this.customTags);
 }
 
 class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
@@ -493,6 +542,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
   final Value<DateTime> updatedAt;
   final Value<String?> aiAnalysisJson;
   final Value<String> tags;
+  final Value<String> aiTags;
+  final Value<String> aiKnowledgePoints;
+  final Value<String> customTags;
   final Value<int> rowid;
   const QuestionRecordsCompanion({
     this.id = const Value.absent(),
@@ -508,6 +560,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
     this.updatedAt = const Value.absent(),
     this.aiAnalysisJson = const Value.absent(),
     this.tags = const Value.absent(),
+    this.aiTags = const Value.absent(),
+    this.aiKnowledgePoints = const Value.absent(),
+    this.customTags = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QuestionRecordsCompanion.insert({
@@ -524,6 +579,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
     required DateTime updatedAt,
     this.aiAnalysisJson = const Value.absent(),
     this.tags = const Value.absent(),
+    this.aiTags = const Value.absent(),
+    this.aiKnowledgePoints = const Value.absent(),
+    this.customTags = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         subject = Value(subject),
@@ -547,6 +605,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
     Expression<DateTime>? updatedAt,
     Expression<String>? aiAnalysisJson,
     Expression<String>? tags,
+    Expression<String>? aiTags,
+    Expression<String>? aiKnowledgePoints,
+    Expression<String>? customTags,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -563,6 +624,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (aiAnalysisJson != null) 'ai_analysis_json': aiAnalysisJson,
       if (tags != null) 'tags': tags,
+      if (aiTags != null) 'ai_tags': aiTags,
+      if (aiKnowledgePoints != null) 'ai_knowledge_points': aiKnowledgePoints,
+      if (customTags != null) 'custom_tags': customTags,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -581,6 +645,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
       Value<DateTime>? updatedAt,
       Value<String?>? aiAnalysisJson,
       Value<String>? tags,
+      Value<String>? aiTags,
+      Value<String>? aiKnowledgePoints,
+      Value<String>? customTags,
       Value<int>? rowid}) {
     return QuestionRecordsCompanion(
       id: id ?? this.id,
@@ -596,6 +663,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
       updatedAt: updatedAt ?? this.updatedAt,
       aiAnalysisJson: aiAnalysisJson ?? this.aiAnalysisJson,
       tags: tags ?? this.tags,
+      aiTags: aiTags ?? this.aiTags,
+      aiKnowledgePoints: aiKnowledgePoints ?? this.aiKnowledgePoints,
+      customTags: customTags ?? this.customTags,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -642,6 +712,15 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
     if (tags.present) {
       map['tags'] = Variable<String>(tags.value);
     }
+    if (aiTags.present) {
+      map['ai_tags'] = Variable<String>(aiTags.value);
+    }
+    if (aiKnowledgePoints.present) {
+      map['ai_knowledge_points'] = Variable<String>(aiKnowledgePoints.value);
+    }
+    if (customTags.present) {
+      map['custom_tags'] = Variable<String>(customTags.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -664,6 +743,9 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
           ..write('updatedAt: $updatedAt, ')
           ..write('aiAnalysisJson: $aiAnalysisJson, ')
           ..write('tags: $tags, ')
+          ..write('aiTags: $aiTags, ')
+          ..write('aiKnowledgePoints: $aiKnowledgePoints, ')
+          ..write('customTags: $customTags, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();

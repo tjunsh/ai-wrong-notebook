@@ -4,6 +4,7 @@ import 'package:smart_wrong_notebook/src/domain/models/question_record.dart' as 
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
 import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
+import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'dart:convert';
 
@@ -42,6 +43,9 @@ class DriftQuestionRepository implements QuestionRepository {
             updatedAt: Value(record.updatedAt),
             aiAnalysisJson: Value(record.analysisResult != null ? jsonEncode(record.analysisResult!.toJson()) : null),
             tags: Value(record.tags.join(',')),
+            aiTags: Value(record.aiTags.join(',')),
+            aiKnowledgePoints: Value(record.aiKnowledgePoints.join(',')),
+            customTags: Value(record.customTags.join(',')),
           ),
         );
   }
@@ -55,6 +59,15 @@ class DriftQuestionRepository implements QuestionRepository {
   Future<void> update(domain.QuestionRecord record) => saveDraft(record);
 
   domain.QuestionRecord _toModel(QuestionRecord row) {
+    AnalysisResult? analysisResult;
+    if (row.aiAnalysisJson != null && row.aiAnalysisJson!.isNotEmpty) {
+      try {
+        analysisResult = AnalysisResult.fromJson(jsonDecode(row.aiAnalysisJson!) as Map<String, dynamic>);
+      } catch (e) {
+        analysisResult = null;
+      }
+    }
+
     return domain.QuestionRecord(
       id: row.id,
       imagePath: row.originalImagePath ?? '',
@@ -69,7 +82,10 @@ class DriftQuestionRepository implements QuestionRepository {
       isFavorite: false,
       contentStatus: ContentStatus.values.firstWhere((c) => c.name == row.contentStatus, orElse: () => ContentStatus.processing),
       masteryLevel: MasteryLevel.values.firstWhere((m) => m.name == row.masteryLevel, orElse: () => MasteryLevel.newQuestion),
-      analysisResult: row.aiAnalysisJson != null ? null : null,
+      analysisResult: analysisResult,
+      aiTags: row.aiTags.isNotEmpty ? row.aiTags.split(',') : <String>[],
+      aiKnowledgePoints: row.aiKnowledgePoints.isNotEmpty ? row.aiKnowledgePoints.split(',') : <String>[],
+      customTags: row.customTags.isNotEmpty ? row.customTags.split(',') : <String>[],
     );
   }
 }

@@ -6,9 +6,15 @@ class GeneratedExercise {
     required this.answer,
     required this.explanation,
     this.isCorrect,
+    this.options,
+    this.userAnswer,
   });
 
   factory GeneratedExercise.fromJson(Map<String, dynamic> json) {
+    List<String>? options;
+    if (json['options'] != null) {
+      options = List<String>.from(json['options'] as List);
+    }
     return GeneratedExercise(
       id: json['id'] as String? ?? '',
       difficulty: json['difficulty'] as String? ?? '',
@@ -16,6 +22,8 @@ class GeneratedExercise {
       answer: json['answer'] as String? ?? '',
       explanation: json['explanation'] as String? ?? '',
       isCorrect: json['isCorrect'] as bool?,
+      options: options,
+      userAnswer: json['userAnswer'] as String?,
     );
   }
 
@@ -27,6 +35,8 @@ class GeneratedExercise {
       'answer': answer,
       'explanation': explanation,
       'isCorrect': isCorrect,
+      'options': options,
+      'userAnswer': userAnswer,
     };
   }
 
@@ -36,8 +46,14 @@ class GeneratedExercise {
   final String answer;
   final String explanation;
   final bool? isCorrect;
+  final List<String>? options; // A/B/C/D 选项
+  final String? userAnswer; // 用户选择的答案
 
-  GeneratedExercise copyWith({bool? isCorrect}) {
+  GeneratedExercise copyWith({
+    bool? isCorrect,
+    List<String>? options,
+    String? userAnswer,
+  }) {
     return GeneratedExercise(
       id: id,
       difficulty: difficulty,
@@ -45,6 +61,8 @@ class GeneratedExercise {
       answer: answer,
       explanation: explanation,
       isCorrect: isCorrect ?? this.isCorrect,
+      options: options ?? this.options,
+      userAnswer: userAnswer ?? this.userAnswer,
     );
   }
 }

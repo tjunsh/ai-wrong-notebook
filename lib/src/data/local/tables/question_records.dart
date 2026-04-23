@@ -14,6 +14,9 @@ class QuestionRecords extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get aiAnalysisJson => text().nullable()();
   TextColumn get tags => text().withDefault(const Constant(''))();
+  TextColumn get aiTags => text().withDefault(const Constant(''))();
+  TextColumn get aiKnowledgePoints => text().withDefault(const Constant(''))();
+  TextColumn get customTags => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {id};

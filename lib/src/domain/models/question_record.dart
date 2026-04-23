@@ -19,6 +19,9 @@ class QuestionRecord {
     required this.contentStatus,
     required this.masteryLevel,
     required this.analysisResult,
+    this.aiTags = const [],
+    this.aiKnowledgePoints = const [],
+    this.customTags = const [],
   });
 
   factory QuestionRecord.draft({
@@ -43,6 +46,9 @@ class QuestionRecord {
       contentStatus: ContentStatus.processing,
       masteryLevel: MasteryLevel.newQuestion,
       analysisResult: null,
+      aiTags: const [],
+      aiKnowledgePoints: const [],
+      customTags: const [],
     );
   }
 
@@ -75,6 +81,9 @@ class QuestionRecord {
       analysisResult: json['analysisResult'] != null
           ? AnalysisResult.fromJson(json['analysisResult'] as Map<String, dynamic>)
           : null,
+      aiTags: List<String>.from(json['aiTags'] as List? ?? []),
+      aiKnowledgePoints: List<String>.from(json['aiKnowledgePoints'] as List? ?? []),
+      customTags: List<String>.from(json['customTags'] as List? ?? []),
     );
   }
 
@@ -94,6 +103,9 @@ class QuestionRecord {
       'contentStatus': contentStatus.name,
       'masteryLevel': masteryLevel.name,
       'analysisResult': analysisResult?.toJson(),
+      'aiTags': aiTags,
+      'aiKnowledgePoints': aiKnowledgePoints,
+      'customTags': customTags,
     };
   }
 
@@ -111,6 +123,12 @@ class QuestionRecord {
   final ContentStatus contentStatus;
   final MasteryLevel masteryLevel;
   final AnalysisResult? analysisResult;
+  final List<String> aiTags;           // AI 短标签
+  final List<String> aiKnowledgePoints; // AI 知识点
+  final List<String> customTags;        // 用户自定义标签
+
+  // 合并显示用
+  List<String> get allTags => [...aiTags, ...customTags];
 
   QuestionRecord copyWith({
     String? correctedText,
@@ -122,6 +140,9 @@ class QuestionRecord {
     DateTime? lastReviewedAt,
     List<String>? tags,
     bool? isFavorite,
+    List<String>? aiTags,
+    List<String>? aiKnowledgePoints,
+    List<String>? customTags,
   }) {
     return QuestionRecord(
       id: id,
@@ -138,6 +159,9 @@ class QuestionRecord {
       contentStatus: contentStatus ?? this.contentStatus,
       masteryLevel: masteryLevel ?? this.masteryLevel,
       analysisResult: analysisResult ?? this.analysisResult,
+      aiTags: aiTags ?? this.aiTags,
+      aiKnowledgePoints: aiKnowledgePoints ?? this.aiKnowledgePoints,
+      customTags: customTags ?? this.customTags,
     );
   }
 }

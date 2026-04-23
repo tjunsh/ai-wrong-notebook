@@ -48,11 +48,11 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
     final questionsAsync = ref.watch(filteredQuestionListProvider);
     final selectedSubject = ref.watch(selectedSubjectFilterProvider);
     final selectedMastery = ref.watch(selectedMasteryFilterProvider);
+    final selectedKnowledgePoint = ref.watch(selectedKnowledgePointFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('错题本'),
-        titleSpacing: 0,
         actions: [
           IconButton(
             icon: const Icon(CupertinoIcons.camera),
@@ -110,10 +110,11 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
               children: <Widget>[
                 _Chip(
                   label: '全部',
-                  selected: selectedSubject == null && selectedMastery == null,
+                  selected: selectedSubject == null && selectedMastery == null && selectedKnowledgePoint == null,
                   onTap: () {
                     ref.read(selectedSubjectFilterProvider.notifier).state = null;
                     ref.read(selectedMasteryFilterProvider.notifier).state = null;
+                    ref.read(selectedKnowledgePointFilterProvider.notifier).state = null;
                   },
                 ),
                 const SizedBox(width: 8),
@@ -127,6 +128,17 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                     },
                   ),
                 )),
+                // AI 知识点过滤
+                if (selectedKnowledgePoint != null) ...<Widget>[
+                  const SizedBox(width: 8),
+                  _Chip(
+                    label: '📚 $selectedKnowledgePoint',
+                    selected: true,
+                    onTap: () {
+                      ref.read(selectedKnowledgePointFilterProvider.notifier).state = null;
+                    },
+                  ),
+                ],
               ],
             ),
           ),
@@ -166,6 +178,9 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                             context.go('/notebook/question/${q.id}');
                           },
                           onDelete: () => _confirmDelete(context, ref, q),
+                          onKnowledgePointTap: (kp) {
+                            ref.read(selectedKnowledgePointFilterProvider.notifier).state = kp;
+                          },
                         ),
                       );
                     },
@@ -212,16 +227,25 @@ class _Chip extends StatelessWidget {
 }
 
 class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({required this.question, required this.onTap, required this.onDelete});
+  const _QuestionCard({
+    required this.question,
+    required this.onTap,
+    required this.onDelete,
+    required this.onKnowledgePointTap,
+  });
 
   final dynamic question;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final void Function(String knowledgePoint) onKnowledgePointTap;
 
   @override
   Widget build(BuildContext context) {
     final masteryColor = _masteryColor(question.masteryLevel);
     final subjectIcon = _subjectIcon(question.subject);
+    final aiTags = question.aiTags ?? <String>[];
+    final customTags = question.customTags ?? <String>[];
+    final allTags = [...aiTags, ...customTags];
 
     return Dismissible(
       key: ValueKey(question.id),
@@ -306,6 +330,38 @@ class _QuestionCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                        // AI 知识点标签
+                        if (allTags.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: allTags.take(5).map((tag) {
+                              final isAiTag = aiTags.contains(tag);
+                              return GestureDetector(
+                                onTap: () => onKnowledgePointTap(tag),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isAiTag
+                                        ? const Color(0xFFFFF7ED)
+                                        : const Color(0xFFEEF2FF),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isAiTag
+                                          ? const Color(0xFFD97706)
+                                          : const Color(0xFF4F46E5),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       ],
                     ),
                   ),

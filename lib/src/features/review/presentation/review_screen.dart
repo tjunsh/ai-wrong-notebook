@@ -137,35 +137,47 @@ class _TodayBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
+    return Semantics(
+      button: true,
+      label: '今日待复习 $count 道错题',
+      child: InkWell(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('共 $count 道待复习，点击下方卡片查看详情'), duration: const Duration(seconds: 2)),
+          );
+        },
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFED7AA)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEDD5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(CupertinoIcons.arrow_2_circlepath, color: Color(0xFFF97316), size: 20),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7ED),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFED7AA)),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text('今日待复习', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF92400E))),
-                Text('$count 道错题等待巩固', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
-              ],
-            ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEDD5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(CupertinoIcons.arrow_2_circlepath, color: Color(0xFFF97316), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('今日待复习', style: Theme.of(context).textTheme.titleMedium),
+                    Text('$count 道错题等待巩固', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
+                  ],
+                ),
+              ),
+              const Icon(CupertinoIcons.chevron_right, color: Color(0xFFF97316), size: 22),
+            ],
           ),
-          const Icon(CupertinoIcons.chevron_right, color: Color(0xFFF97316), size: 22),
-        ],
+        ),
       ),
     );
   }

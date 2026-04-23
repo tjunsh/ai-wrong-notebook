@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,9 +59,9 @@ class QuestionDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: <Widget>[
-          // Question preview
+          // 统一标签分类框：科目 | AI识别 | 状态 | 知识点
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
@@ -69,44 +70,101 @@ class QuestionDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                // 第一行：科目 + AI识别 + 状态
                 Row(
                   children: <Widget>[
-                    Hero(
-                      tag: 'subject_icon_${current.id}',
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2FF),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(current.subject.label, style: const TextStyle(fontSize: 12, color: Color(0xFF4F46E5))),
-                      ),
+                    _TagChip(
+                      label: current.subject.label,
+                      bgColor: const Color(0xFFEEF2FF),
+                      textColor: const Color(0xFF4F46E5),
                     ),
-                    const SizedBox(width: 8),
-                    Hero(
-                      tag: 'mastery_${current.id}',
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: masteryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(_masteryLabel(current.masteryLevel), style: TextStyle(fontSize: 12, color: masteryColor, fontWeight: FontWeight.w500)),
+                    if (result?.subject != null) ...<Widget>[
+                      const SizedBox(width: 8),
+                      _TagChip(
+                        label: 'AI识别',
+                        bgColor: const Color(0xFFF0FDF4),
+                        textColor: const Color(0xFF16A34A),
                       ),
+                    ],
+                    const SizedBox(width: 8),
+                    _TagChip(
+                      label: _masteryLabel(current.masteryLevel),
+                      bgColor: masteryColor.withValues(alpha: 0.1),
+                      textColor: masteryColor,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Hero(
-                  tag: 'question_text_${current.id}',
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Text(current.correctedText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                // AI 短标签（橙色）
+                if (current.aiTags.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 10),
+                  Text('AI标签', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: current.aiTags.map((tag) => _TagChip(
+                      label: tag,
+                      bgColor: const Color(0xFFFFF7ED),
+                      textColor: const Color(0xFFD97706),
+                    )).toList(),
+                  ),
+                ],
+                // AI 知识点（橙色，详细）
+                if (current.aiKnowledgePoints.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text('知识点', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: current.aiKnowledgePoints.map((kp) => _TagChip(
+                      label: kp,
+                      bgColor: const Color(0xFFFFF7ED),
+                      textColor: const Color(0xFFD97706),
+                    )).toList(),
+                  ),
+                ],
+                // 自定义标签（蓝色）
+                if (current.customTags.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text('自定义标签', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: current.customTags.map((t) => _TagChip(
+                      label: t,
+                      bgColor: const Color(0xFFEEF2FF),
+                      textColor: const Color(0xFF4F46E5),
+                    )).toList(),
+                  ),
+                ],
+                // 添加标签按钮
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => _showAddTagDialog(context, ref, current),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(CupertinoIcons.plus, size: 14, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Text('添加标签', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          Text(current.correctedText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
           if (result == null) ...<Widget>[
             const SizedBox(height: 20),
             Container(
@@ -135,7 +193,81 @@ class QuestionDetailScreen extends ConsumerWidget {
             ),
           ],
           if (result != null) ...<Widget>[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            // 原题（包含图片和文本）
+            _InfoCard(
+              icon: CupertinoIcons.doc_text,
+              iconColor: const Color(0xFF6366F1),
+              bg: const Color(0xFFEEF2FF),
+              border: const Color(0xFFC7D2FE),
+              title: '原题',
+              titleColor: const Color(0xFF4338CA),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  // 图片预览
+                  if (current.imagePath.isNotEmpty)
+                    GestureDetector(
+                      onTap: () => _showFullImage(context, current.imagePath),
+                      child: Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Stack(
+                          children: <Widget>[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                File(current.imagePath),
+                                width: double.infinity,
+                                height: 120,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      Icon(CupertinoIcons.photo, size: 30, color: Colors.grey),
+                                      SizedBox(height: 4),
+                                      Text('图片加载失败', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 6,
+                              right: 6,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Icon(CupertinoIcons.zoom_in, size: 12, color: Colors.white),
+                                    SizedBox(width: 3),
+                                    Text('查看原图', style: TextStyle(fontSize: 10, color: Colors.white)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (current.imagePath.isNotEmpty) const SizedBox(height: 10),
+                  Text(
+                    current.correctedText.isNotEmpty ? current.correctedText : '（从图片识别）',
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF3730A3)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
             // Answer
             _InfoCard(
               icon: CupertinoIcons.checkmark_circle,
@@ -304,6 +436,99 @@ class QuestionDetailScreen extends ConsumerWidget {
     );
   }
 
+  void _showAddTagDialog(BuildContext context, WidgetRef ref, QuestionRecord question) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('添加标签'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: '输入标签名称',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('已有标签', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                ...question.aiTags.map((tag) => _dialogTagChip(tag, Colors.orange)),
+                ...question.aiKnowledgePoints.map((kp) => _dialogTagChip(kp, Colors.orange)),
+                ...question.customTags.map((t) => _dialogTagChip(t, Colors.indigo)),
+              ],
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+            onPressed: () async {
+              final tag = controller.text.trim();
+              if (tag.isEmpty) return;
+
+              // 检查是否已存在（去重）
+              final allTags = [...question.aiTags, ...question.aiKnowledgePoints, ...question.customTags];
+              if (allTags.contains(tag)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('标签已存在')),
+                );
+                return;
+              }
+
+              final newTags = [...question.customTags, tag];
+              final updated = question.copyWith(customTags: newTags);
+              await ref.read(questionRepositoryProvider).update(updated);
+              ref.read(currentQuestionProvider.notifier).state = updated;
+              invalidateQuestionList(ref);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('添加'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dialogTagChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
+    );
+  }
+
+  void _showFullImage(BuildContext context, String imagePath) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            title: const Text('原图'),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.file(File(imagePath)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _markResult(BuildContext context, WidgetRef ref, QuestionRecord question, bool mastered) async {
     final controller = ReviewController(repository: ref.read(questionRepositoryProvider));
     final updated = mastered
@@ -319,7 +544,17 @@ class QuestionDetailScreen extends ConsumerWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.iconColor, required this.bg, required this.border, required this.title, required this.titleColor, required this.value, required this.valueColor});
+  const _InfoCard({
+    required this.icon,
+    required this.iconColor,
+    required this.bg,
+    required this.border,
+    required this.title,
+    required this.titleColor,
+    this.value,
+    this.valueColor,
+    this.child,
+  });
 
   final IconData icon;
   final Color iconColor;
@@ -327,8 +562,9 @@ class _InfoCard extends StatelessWidget {
   final Color border;
   final String title;
   final Color titleColor;
-  final String value;
-  final Color valueColor;
+  final String? value;
+  final Color? valueColor;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
@@ -349,10 +585,33 @@ class _InfoCard extends StatelessWidget {
               Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 14, color: valueColor)),
+          const SizedBox(height: 10),
+          if (child != null)
+            child!
+          else
+            Text(value ?? '', style: TextStyle(fontSize: 14, color: valueColor)),
         ],
       ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.label, required this.bgColor, required this.textColor});
+
+  final String label;
+  final Color bgColor;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w500)),
     );
   }
 }

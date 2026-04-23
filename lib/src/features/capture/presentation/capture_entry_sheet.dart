@@ -102,6 +102,14 @@ class _CaptureEntrySheetState extends ConsumerState<CaptureEntrySheet> {
   Future<void> _pickAndNavigate({required bool fromCamera}) async {
     final router = GoRouter.of(context);
 
+    // 先检查 AI 是否已配置
+    final config = await ref.read(settingsRepositoryProvider).getAiProviderConfig();
+    if (config == null || config.baseUrl.isEmpty || config.apiKey.isEmpty || config.model.isEmpty) {
+      setState(() => _isLoading = false);
+      setState(() => _errorMessage = '请先在设置中配置 AI 服务');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;

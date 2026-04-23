@@ -17,6 +17,7 @@ class AnalysisLoadingScreen extends ConsumerStatefulWidget {
 
 class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
   String? _errorMessage;
+  String? _debugInfo;
   int _step = 0;
 
   final _steps = const ['正在识别图片...', '正在分析题目...', '正在生成结果...', '即将完成...'];
@@ -49,6 +50,22 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
       return;
     }
 
+    // 检查配置并显示调试信息
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    final config = await settingsRepo.getAiProviderConfig();
+
+    String debugInfo = '配置状态:\n';
+    debugInfo += '- 配置对象: ${config != null ? "存在" : "为空"}\n';
+    if (config != null) {
+      debugInfo += '- baseUrl: ${config.baseUrl.isNotEmpty ? config.baseUrl : "(空)"}\n';
+      debugInfo += '- model: ${config.model.isNotEmpty ? config.model : "(空)"}\n';
+      debugInfo += '- apiKey: ${config.apiKey.isNotEmpty ? "[已设置(${config.apiKey.length}字符)]" : "(空)"}\n';
+    } else {
+      debugInfo += '\n请到设置中配置 AI 服务';
+    }
+
+    setState(() => _debugInfo = debugInfo);
+
     try {
       final service = ref.read(aiAnalysisServiceProvider);
       final analysis = await service.analyzeQuestion(
@@ -57,15 +74,25 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
         imagePath: current.imagePath,
       );
 
+      // 如果 AI 返回了科目，更新 QuestionRecord 的科目和知识点
       final updated = current.copyWith(
         contentStatus: ContentStatus.ready,
         analysisResult: analysis,
+        subject: analysis.subject ?? current.subject,
+        // AI 短标签和知识点自动打标
+        aiTags: analysis.aiTags,
+        aiKnowledgePoints: analysis.knowledgePoints,
       );
       ref.read(currentQuestionProvider.notifier).state = updated;
 
       if (mounted) context.go('/analysis/result');
     } on AiAnalysisException catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _debugInfo = debugInfo;
+        });
+      }
     }
   }
 
@@ -80,22 +107,70 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
         ),
       ),
       body: _errorMessage != null
-          ? ErrorView(
-              message: _errorMessage!,
-              icon: CupertinoIcons.cloud,
-              onRetry: _retry,
-            )
+          ? _buildErrorView()
           : _LoadingView(step: _step, steps: _steps),
     );
   }
 
-  void _retry() {
-    setState(() {
-      _errorMessage = null;
-      _step = 0;
-    });
-    _runAnalysis();
-    _animateSteps();
+  Widget _buildErrorView() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: const Icon(
+                CupertinoIcons.exclamationmark_circle,
+                color: Color(0xFFEA580C),
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF9A3412)),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text('调试信息:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Text(_debugInfo ?? '', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () {
+                setState(() {
+                  _errorMessage = null;
+                  _step = 0;
+                });
+                _runAnalysis();
+                _animateSteps();
+              },
+              style: FilledButton.styleFrom(minimumSize: const Size(120, 40)),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

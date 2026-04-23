@@ -35,6 +35,9 @@ ThemeData buildLightTheme() {
         return IconThemeData(color: Colors.grey.shade600, size: 24);
       }),
     ),
+    textTheme: base.textTheme.copyWith(
+      titleLarge: base.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+    ),
   );
 }
 

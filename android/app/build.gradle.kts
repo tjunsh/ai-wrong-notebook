@@ -32,9 +32,16 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
 }
+
+android.buildFeatures.buildConfig = true
 
 flutter {
     source = "../.."

@@ -98,27 +98,32 @@ class _ImageCropScreenState extends ConsumerState<ImageCropScreen> {
           onPressed: () => context.go('/'),
         ),
       ),
-      body: Center(
-        child: _cropping
-            ? const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('正在打开裁剪工具...'),
-                ],
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const Text('准备裁剪...'),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: _startCrop,
-                    child: const Text('重新裁剪'),
+      body: SafeArea(
+        child: Center(
+          child: _cropping
+              ? const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('正在打开裁剪工具...'),
+                  ],
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Text('准备裁剪...'),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _startCrop,
+                        child: const Text('重新裁剪'),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+        ),
       ),
     );
   }

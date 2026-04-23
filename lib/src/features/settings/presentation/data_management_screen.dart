@@ -223,6 +223,7 @@ class DataManagementScreen extends ConsumerWidget {
             ? AnalysisResult(
                 finalAnswer: analysisMap['finalAnswer'] as String? ?? '',
                 steps: List<String>.from(analysisMap['steps'] as List? ?? []),
+                aiTags: List<String>.from(analysisMap['aiTags'] as List? ?? []),
                 knowledgePoints: List<String>.from(analysisMap['knowledgePoints'] as List? ?? []),
                 mistakeReason: analysisMap['mistakeReason'] as String? ?? '',
                 studyAdvice: analysisMap['studyAdvice'] as String? ?? '',
