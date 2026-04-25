@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
+import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 
 class ReviewScreen extends ConsumerWidget {
   const ReviewScreen({super.key});
@@ -167,7 +168,6 @@ class _ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _masteryColor(question.masteryLevel);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
@@ -187,10 +187,10 @@ class _ReviewCard extends StatelessWidget {
               Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: question.subject.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(CupertinoIcons.question, size: 18, color: color),
+                child: Icon(question.subject.icon, size: 18, color: question.subject.color),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -203,10 +203,26 @@ class _ReviewCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${question.subject.label} · ${_masteryLabel(question.masteryLevel)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: <Widget>[
+                        Text(
+                          question.subject.label,
+                          style: TextStyle(fontSize: 12, color: question.subject.color),
+                        ),
+                        if (question.aiTags.isNotEmpty) ...<Widget>[
+                          const SizedBox(width: 8),
+                          ...question.aiTags.take(3).map((tag) => Container(
+                            margin: const EdgeInsets.only(right: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(tag, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                          )),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -217,21 +233,5 @@ class _ReviewCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _masteryColor(MasteryLevel level) {
-    switch (level) {
-      case MasteryLevel.newQuestion: return Colors.grey;
-      case MasteryLevel.reviewing: return Colors.orange;
-      case MasteryLevel.mastered: return Colors.green;
-    }
-  }
-
-  String _masteryLabel(MasteryLevel level) {
-    switch (level) {
-      case MasteryLevel.newQuestion: return '未复习';
-      case MasteryLevel.reviewing: return '复习中';
-      case MasteryLevel.mastered: return '已掌握';
-    }
   }
 }

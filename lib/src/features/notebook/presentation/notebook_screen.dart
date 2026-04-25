@@ -242,7 +242,6 @@ class _QuestionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final masteryColor = _masteryColor(question.masteryLevel);
-    final subjectIcon = _subjectIcon(question.subject);
     final aiTags = question.aiTags ?? <String>[];
     final customTags = question.customTags ?? <String>[];
     final allTags = [...aiTags, ...customTags];
@@ -284,12 +283,12 @@ class _QuestionCard extends StatelessWidget {
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
-                      color: subjectIcon.color.withValues(alpha: 0.1),
+                      color: question.subject.color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Hero(
                       tag: 'subject_icon_${question.id}',
-                      child: Icon(subjectIcon.icon, size: 20, color: subjectIcon.color),
+                      child: Icon(question.subject.icon, size: 20, color: question.subject.color),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -397,22 +396,6 @@ class _QuestionCard extends StatelessWidget {
       case MasteryLevel.newQuestion: return '新增';
       case MasteryLevel.reviewing: return '复习中';
       case MasteryLevel.mastered: return '已掌握';
-    }
-  }
-
-  ({IconData icon, Color color}) _subjectIcon(Subject subject) {
-    switch (subject) {
-      case Subject.math: return (icon: CupertinoIcons.function, color: const Color(0xFF6366F1));
-      case Subject.english: return (icon: CupertinoIcons.textformat_abc, color: const Color(0xFFD97706));
-      case Subject.chinese: return (icon: CupertinoIcons.doc_text, color: const Color(0xFF16A34A));
-      case Subject.physics: return (icon: CupertinoIcons.bolt, color: const Color(0xFFEA580C));
-      case Subject.chemistry: return (icon: CupertinoIcons.flame, color: const Color(0xFF7C3AED));
-      case Subject.biology: return (icon: CupertinoIcons.leaf_arrow_circlepath, color: const Color(0xFF16A34A));
-      case Subject.history: return (icon: CupertinoIcons.book, color: const Color(0xFFD97706));
-      case Subject.geography: return (icon: CupertinoIcons.globe, color: const Color(0xFF6366F1));
-      case Subject.politics: return (icon: CupertinoIcons.building_2_fill, color: const Color(0xFF7C3AED));
-      case Subject.science: return (icon: CupertinoIcons.lightbulb, color: const Color(0xFFEA580C));
-      case Subject.custom: return (icon: CupertinoIcons.question, color: Colors.grey);
     }
   }
 }
