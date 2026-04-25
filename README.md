@@ -29,7 +29,7 @@
 | 网络请求 | Dio |
 | 主题方案 | flex_color_scheme |
 | 图表 | fl_chart |
-| AI 服务 | 兼容 OpenAI 格式 API（支持 Vision 模型，如 DeepSeek、GPT-4o 等）|
+| AI 服务 | 兼容 OpenAI 格式 API（支持 Vision 模型，如 GPT5.4，GPT-4o 等）|
 | 图片选择 | image_picker |
 | 图片裁剪 | image_cropper |
 | 数据导入导出 | share_plus + file_picker |
