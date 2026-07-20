@@ -124,6 +124,16 @@ flutter test
 
 ## Star History
 
+<a href="https://www.star-history.com/?repos=tjunsh%2Fai-wrong-notebook&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&theme=dark&legend=bottom-right&sealed_token=KDfa2h6bUXcCadImEO8vHVPGcCJ_pYYRhg9RyoYvNz1OBuKyl2n53kGB3jWQVU7xd52vpbefDpATCgJkYjEEjkjdEnj7nxX4UnHtYIs5-pYfsumMWIq3K_zg3IgPfZ41IQlTEdETGSgAko3SrO2akGkBalQTyWhwOxsWpAy10shTEbF0AxUOXW389KWh" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&legend=bottom-right&sealed_token=KDfa2h6bUXcCadImEO8vHVPGcCJ_pYYRhg9RyoYvNz1OBuKyl2n53kGB3jWQVU7xd52vpbefDpATCgJkYjEEjkjdEnj7nxX4UnHtYIs5-pYfsumMWIq3K_zg3IgPfZ41IQlTEdETGSgAko3SrO2akGkBalQTyWhwOxsWpAy10shTEbF0AxUOXW389KWh" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&legend=bottom-right&sealed_token=KDfa2h6bUXcCadImEO8vHVPGcCJ_pYYRhg9RyoYvNz1OBuKyl2n53kGB3jWQVU7xd52vpbefDpATCgJkYjEEjkjdEnj7nxX4UnHtYIs5-pYfsumMWIq3K_zg3IgPfZ41IQlTEdETGSgAko3SrO2akGkBalQTyWhwOxsWpAy10shTEbF0AxUOXW389KWh" />
+ </picture>
+</a>
+
+## Star History
+
 <p align="center">
   <img src="docs/assets/star-history-202679.png" alt="Star History" width="720" />
 </p>
