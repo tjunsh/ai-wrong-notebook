@@ -132,12 +132,6 @@ flutter test
  </picture>
 </a>
 
-## Star History
-
-<p align="center">
-  <img src="docs/assets/star-history-202679.png" alt="Star History" width="720" />
-</p>
-
 ## License
 
 MIT
