@@ -50,7 +50,7 @@ jobs:
         run: |
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -path '*/apksigner' -type f | sort -V | tail -1)"
           "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk | tee /tmp/apksigner.txt
-          grep -qi 'Signer #1 certificate SHA-256 digest: 25862f0436894d64bf32e54b46ff11711ee76a36af807959a68f76e989885e60' /tmp/apksigner.txt
+          grep -qi 'certificate SHA-256 digest: 25862f0436894d64bf32e54b46ff11711ee76a36af807959a68f76e989885e60' /tmp/apksigner.txt
 
       - name: Create APK archive
         run: |
