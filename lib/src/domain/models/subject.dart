@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 enum Subject {
+  unknown('学科待确认', CupertinoIcons.question, Colors.grey),
   chinese('语文', CupertinoIcons.doc_text, Color(0xFF16A34A)),
   math('数学', CupertinoIcons.function, Color(0xFF6366F1)),
   english('英语', CupertinoIcons.textformat_abc, Color(0xFFD97706)),
@@ -19,4 +20,7 @@ enum Subject {
   final String label;
   final IconData icon;
   final Color color;
+
+  static List<Subject> get selectableValues =>
+      values.where((subject) => subject != Subject.unknown).toList();
 }

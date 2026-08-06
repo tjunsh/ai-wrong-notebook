@@ -164,6 +164,121 @@ A(C6H6) -> B -> D -> E -> F，条件：重排指有机分子中的一个基团�
       expect(result.candidates, hasLength(1));
     });
 
+    test('keeps physics choice question with table and options as one question',
+        () async {
+      const text =
+          r'''LED灯发光的颜色与其两端电压的对应关系如表1所示，LED灯发光时通过它的电流始终为 \(0.02\,\mathrm{A}\)。把这样的LED灯接入图3所示电路，闭合开关，当滑动变阻器的滑片在图示位置时，LED灯发出黄色的光。图3为由LED灯、滑动变阻器 \(R\)（滑片 \(P\) 在靠右位置）、电源和开关 \(S\) 组成的串联电路。下列方案中可使LED灯发红色的光的是（ ）
+
+表1：
+| LED灯两端的电压/\(\mathrm{V}\) | LED灯发光的颜色 |
+|---|---|
+| \(1.8\) | 红 |
+| \(2.4\) | 黄 |
+| \(3.2\) | 蓝 |
+
+A. 向右移动滑片 \(P\)，电源电压一定变大
+B. 向右移动滑片 \(P\)，电源电压可能变小
+C. 向左移动滑片 \(P\)，电源电压可能不变
+D. 向左移动滑片 \(P\)，电源电压一定变大''';
+
+      final result = await splitter.split(text, subject: Subject.physics);
+
+      expect(result.strategy, QuestionSplitStrategy.fallback);
+      expect(result.candidates, hasLength(1));
+      expect(result.candidates.single.text, contains('表1'));
+      expect(result.candidates.single.text, contains('A. 向右移动滑片'));
+    });
+
+    test(
+        'keeps physics choice question with decimal table rows as one question',
+        () async {
+      const text = r'''LED灯发光的颜色与其两端电压的对应关系如表1所示。下列方案中可使LED灯发红色的光的是（ ）
+
+\[
+\begin{array}{c|c}
+\text{LED灯两端的电压/伏} & \text{LED灯发光的颜色} \\
+1.8 & \text{红} \\
+2.4 & \text{黄} \\
+3.2 & \text{蓝}
+\end{array}
+\]
+
+A. 向右移动滑片 \(P\)，电源电压一定变大
+B. 向右移动滑片 \(P\)，电源电压可能变小
+C. 向左移动滑片 \(P\)，电源电压可能不变
+D. 向左移动滑片 \(P\)，电源电压一定变大''';
+
+      final result = await splitter.split(text, subject: Subject.physics);
+
+      expect(result.strategy, QuestionSplitStrategy.fallback);
+      expect(result.candidates, hasLength(1));
+      expect(result.candidates.single.text, contains('1.8'));
+      expect(result.candidates.single.text, contains('A. 向右移动滑片'));
+    });
+
+    test('keeps a single physics data question with a supporting table',
+        () async {
+      const text = r'''某同学利用图示电路测量小灯泡的电功率，实验中保持电源电压不变。
+
+表1：
+| 电压/\(\mathrm{V}\) | 电流/\(\mathrm{A}\) |
+|---|---|
+| \(2.0\) | \(0.20\) |
+| \(2.5\) | \(0.24\) |
+| \(3.0\) | \(0.28\) |
+
+根据表1中的数据，求小灯泡在电压为 \(2.5\,\mathrm{V}\) 时的电功率。''';
+
+      final result = await splitter.split(text, subject: Subject.physics);
+
+      expect(result.strategy, QuestionSplitStrategy.fallback);
+      expect(result.candidates, hasLength(1));
+      expect(result.candidates.single.text, contains('表1'));
+      expect(result.candidates.single.text, contains('电功率'));
+    });
+
+    test('still splits numbered physics choice questions', () async {
+      const text = r'''1. 下列关于串联电路的说法正确的是（ ）
+A. 电流处处相等
+B. 电压处处相等
+C. 电阻一定相等
+D. 功率一定相等
+
+2. 下列关于并联电路的说法正确的是（ ）
+A. 各支路电压相等
+B. 各支路电流相等
+C. 总电阻大于任一支路电阻
+D. 开关只能控制全部支路''';
+
+      final result = await splitter.split(text, subject: Subject.physics);
+
+      expect(result.strategy, QuestionSplitStrategy.numbered);
+      expect(result.candidates, hasLength(2));
+      expect(result.candidates.first.text, startsWith('1.'));
+      expect(result.candidates.last.text, startsWith('2.'));
+    });
+
+    test('still splits extracted independent math question list', () async {
+      const text = r'''1. 已知 \(x^{2}+1=5\)，求 \(x\) 的值。
+
+2. 若 \(\frac{a}{b}=2\)，且 \(a+b=9\)，求 \(a\) 和 \(b\) 的值。
+
+3. 函数 \(f(x)=x^{2}-2x+1\) 在 \(x=3\) 时的值是多少？
+
+4. 解方程组：\[\begin{cases} x+y=5 \\ x-y=1 \end{cases}\]
+
+5. 圆锥体积公式为 \(V=\frac{1}{3}\pi r^{2}h\)。当 \(r=3\)，\(h=4\) 时，求 \(V\)。
+
+6. 在 \(\triangle ABC\) 中，若 \(AB=AC\)，且 \(\angle A=40^\circ\)，求 \(\angle B\)。''';
+
+      final result = await splitter.split(text, subject: Subject.math);
+
+      expect(result.strategy, QuestionSplitStrategy.numbered);
+      expect(result.candidates, hasLength(6));
+      expect(result.candidates.first.text, startsWith('1.'));
+      expect(result.candidates.last.text, startsWith('6.'));
+    });
+
     test('still splits independent numbered chemistry questions', () async {
       const text = '''1. 写出钠与水反应的化学方程式。
 2. 判断下列离子能否大量共存。
@@ -210,6 +325,34 @@ A(C6H6) -> B -> D -> E -> F，条件：重排指有机分子中的一个基团�
           ),
         ],
       ),
+      candidateAnalyses: const <CandidateAnalysisSnapshot>[
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-0',
+          order: 1,
+          questionText: '第一题',
+          analysisResult: AnalysisResult(
+            finalAnswer: 'A',
+            steps: <String>[],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
+        ),
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-1',
+          order: 2,
+          questionText: '第二题',
+          analysisResult: AnalysisResult(
+            finalAnswer: 'B',
+            steps: <String>[],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
+        ),
+      ],
     );
 
     final session = await buildQuestionSplitSession(source);
@@ -217,6 +360,120 @@ A(C6H6) -> B -> D -> E -> F，条件：重排指有机分子中的一个基团�
     expect(session.strategy, QuestionSplitStrategy.numbered);
     expect(session.drafts.map((draft) => draft.text).toList(),
         <String>['第一题', '第二题']);
+  });
+
+  test('buildQuestionSplitSession filters failed candidates from saving',
+      () async {
+    final source = QuestionRecord.draft(
+      id: 'q-partial',
+      imagePath: '',
+      subject: Subject.math,
+      recognizedText: '1. 第一题\n2. 第二题',
+    ).copyWith(
+      splitResult: const QuestionSplitResult(
+        sourceText: '1. 第一题\n2. 第二题',
+        strategy: QuestionSplitStrategy.numbered,
+        candidates: <QuestionSplitCandidate>[
+          QuestionSplitCandidate(
+            id: 'candidate-1',
+            order: 1,
+            text: '第一题',
+            strategy: QuestionSplitStrategy.numbered,
+          ),
+          QuestionSplitCandidate(
+            id: 'candidate-2',
+            order: 2,
+            text: '第二题',
+            strategy: QuestionSplitStrategy.numbered,
+          ),
+        ],
+      ),
+      candidateAnalyses: const <CandidateAnalysisSnapshot>[
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-1',
+          order: 1,
+          questionText: '第一题',
+          analysisResult: AnalysisResult(
+            finalAnswer: 'A',
+            steps: <String>['步骤'],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
+        ),
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-2',
+          order: 2,
+          questionText: '第二题',
+          status: CandidateAnalysisStatus.failed,
+          errorMessage: 'HTTP 503',
+        ),
+      ],
+    );
+
+    final session = await buildQuestionSplitSession(source);
+
+    expect(session.failedCandidateCount, 1);
+    expect(session.drafts, hasLength(1));
+    expect(session.drafts.single.originalOrder, 1);
+    expect(session.drafts.single.canSave, isTrue);
+  });
+
+  test('buildQuestionSplitSession blocks saving while a candidate retry runs',
+      () async {
+    final source = QuestionRecord.draft(
+      id: 'q-retrying',
+      imagePath: '',
+      subject: Subject.math,
+      recognizedText: '1. 第一题\n2. 第二题',
+    ).copyWith(
+      splitResult: const QuestionSplitResult(
+        sourceText: '1. 第一题\n2. 第二题',
+        strategy: QuestionSplitStrategy.numbered,
+        candidates: <QuestionSplitCandidate>[
+          QuestionSplitCandidate(
+            id: 'candidate-1',
+            order: 1,
+            text: '第一题',
+            strategy: QuestionSplitStrategy.numbered,
+          ),
+          QuestionSplitCandidate(
+            id: 'candidate-2',
+            order: 2,
+            text: '第二题',
+            strategy: QuestionSplitStrategy.numbered,
+          ),
+        ],
+      ),
+      candidateAnalyses: const <CandidateAnalysisSnapshot>[
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-1',
+          order: 1,
+          questionText: '第一题',
+          analysisResult: AnalysisResult(
+            finalAnswer: 'A',
+            steps: <String>[],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
+        ),
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-2',
+          order: 2,
+          questionText: '第二题',
+          status: CandidateAnalysisStatus.running,
+        ),
+      ],
+    );
+
+    final session = await buildQuestionSplitSession(source);
+
+    expect(session.drafts, hasLength(1));
+    expect(session.failedCandidateCount, 0);
+    expect(session.retryingCandidateCount, 1);
   });
 
   test(
@@ -290,9 +547,7 @@ A(C6H6) -> B -> D -> E -> F，条件：重排指有机分子中的一个基团�
     expect(child.aiKnowledgePoints, <String>['kp']);
   });
 
-  test(
-      'buildSplitQuestionRecord does not copy parent analysis to unanalyzed siblings',
-      () {
+  test('buildSplitQuestionRecord rejects an unanalyzed sibling', () {
     final source = QuestionRecord.draft(
       id: 'root-2',
       imagePath: '/tmp/root.jpg',
@@ -344,22 +599,19 @@ A(C6H6) -> B -> D -> E -> F，条件：重排指有机分子中的一个基团�
       ],
     );
 
-    final child = buildSplitQuestionRecord(
-      source: source,
-      draft: const QuestionSplitDraft(
-        id: 'candidate-1',
-        text: '2. 若 \\(\\frac{a}{b}=2\\) 且 \\(a+b=9\\)，求 \\(a,b\\)。',
-        selected: true,
-        originalOrder: 2,
+    expect(
+      () => buildSplitQuestionRecord(
+        source: source,
+        draft: const QuestionSplitDraft(
+          id: 'candidate-1',
+          text: '2. 若 \\(\\frac{a}{b}=2\\) 且 \\(a+b=9\\)，求 \\(a,b\\)。',
+          selected: true,
+          originalOrder: 2,
+        ),
+        sortOrder: 2,
       ),
-      sortOrder: 2,
+      throwsStateError,
     );
-
-    expect(child.analysisResult, isNull);
-    expect(child.aiTags, isEmpty);
-    expect(child.aiKnowledgePoints, isEmpty);
-    expect(child.savedExercises, isEmpty);
-    expect(child.normalizedQuestionText, contains(r'\frac{a}{b}'));
   });
 
   test('buildQuestionBatchGroups groups siblings and sorts by split order', () {

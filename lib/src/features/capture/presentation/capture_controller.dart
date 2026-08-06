@@ -9,7 +9,8 @@ class CaptureController {
 
   factory CaptureController.fake() {
     return CaptureController(
-      copyIntoAppDir: (File file) async => '/app/images/${file.uri.pathSegments.last}',
+      copyIntoAppDir: (File file) async =>
+          '/app/images/${file.uri.pathSegments.last}',
     );
   }
 
@@ -18,7 +19,7 @@ class CaptureController {
     return QuestionRecord.draft(
       id: 'draft-${file.uri.pathSegments.last}',
       imagePath: imagePath,
-      subject: Subject.math,
+      subject: Subject.unknown,
       recognizedText: '',
     );
   }

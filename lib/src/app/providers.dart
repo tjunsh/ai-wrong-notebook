@@ -8,10 +8,18 @@ import 'package:smart_wrong_notebook/src/data/repositories/shared_prefs_settings
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 import 'package:smart_wrong_notebook/src/domain/repositories/review_log_repository.dart';
+import 'package:smart_wrong_notebook/src/domain/repositories/ai_conversation_repository.dart';
+import 'package:smart_wrong_notebook/src/domain/repositories/analysis_job_repository.dart';
 import 'package:smart_wrong_notebook/src/data/services/capture_service.dart';
 import 'package:smart_wrong_notebook/src/data/services/notification_service.dart';
 import 'package:smart_wrong_notebook/src/data/services/ocr_service.dart';
 import 'package:smart_wrong_notebook/src/data/services/question_split_service.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_coordinator.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_pipeline.dart';
+import 'package:smart_wrong_notebook/src/data/services/scan_task_lifecycle_service.dart';
+import 'package:smart_wrong_notebook/src/data/services/ai_learning_task_coordinator.dart';
+import 'package:smart_wrong_notebook/src/domain/models/ai_task_spec.dart';
+import 'package:smart_wrong_notebook/src/domain/models/analysis_job.dart';
 import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_split_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
@@ -39,6 +47,37 @@ final Provider<ReviewLogRepository> reviewLogRepositoryProvider =
   return SharedPrefsReviewLogRepository();
 });
 
+final Provider<AiConversationRepository> aiConversationRepositoryProvider =
+    Provider<AiConversationRepository>((ref) {
+  return InMemoryAiConversationRepository();
+});
+
+final Provider<AnalysisJobRepository?> analysisJobRepositoryProvider =
+    Provider<AnalysisJobRepository?>((ref) => null);
+
+final Provider<ScanTaskLifecycleService> scanTaskLifecycleServiceProvider =
+    Provider<ScanTaskLifecycleService>((ref) {
+  return ScanTaskLifecycleService(
+    analysisJobs: ref.watch(analysisJobRepositoryProvider),
+    questions: ref.watch(questionRepositoryProvider),
+  );
+});
+
+final AutoDisposeFutureProvider<int> scanTaskCountProvider =
+    FutureProvider.autoDispose<int>((ref) {
+  return ref.watch(scanTaskLifecycleServiceProvider).countTasks();
+});
+
+final AutoDisposeFutureProvider<int> failedAnalysisTaskCountProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+  final repository = ref.watch(analysisJobRepositoryProvider);
+  if (repository == null) {
+    return 0;
+  }
+  final jobs = await repository.listAll();
+  return jobs.where((job) => job.status == AnalysisJobStatus.failed).length;
+});
+
 // --- Service providers ---
 
 final Provider<AiAnalysisService> aiAnalysisServiceProvider =
@@ -46,6 +85,90 @@ final Provider<AiAnalysisService> aiAnalysisServiceProvider =
   return AiAnalysisService(
       settingsRepository: ref.read(settingsRepositoryProvider));
 });
+
+final Provider<QuestionAnalysisCoordinator>
+    questionAnalysisCoordinatorProvider =
+    Provider<QuestionAnalysisCoordinator>((ref) {
+  return DirectQuestionAnalysisCoordinator(
+    QuestionAnalysisPipeline(ref.read(aiAnalysisServiceProvider)),
+  );
+});
+
+final Provider<AiLearningTaskCoordinator> aiLearningTaskCoordinatorProvider =
+    Provider<AiLearningTaskCoordinator>((ref) {
+  return DirectAiLearningTaskCoordinator(
+    ref.read(aiAnalysisServiceProvider),
+  );
+});
+
+final StreamProvider<List<QuestionAnalysisTaskSnapshot>>
+    backgroundAnalysisTasksProvider =
+    StreamProvider<List<QuestionAnalysisTaskSnapshot>>((ref) {
+  final repository = ref.watch(analysisJobRepositoryProvider);
+  final coordinator = ref.watch(questionAnalysisCoordinatorProvider);
+  if (repository == null ||
+      coordinator is! BackgroundQuestionAnalysisCoordinator) {
+    return Stream<List<QuestionAnalysisTaskSnapshot>>.value(
+      const <QuestionAnalysisTaskSnapshot>[],
+    );
+  }
+
+  return repository.watchAll().map((jobs) {
+    final jobsById = <String, AnalysisJob>{
+      for (final job in jobs) job.id: job,
+    };
+    final latestByQuestion = <String, AnalysisJob>{};
+    for (final job in jobs) {
+      if (job.taskSpec.type != AiTaskType.firstPassAnalysis) continue;
+      final questionId = job.taskSpec.parentQuestionId;
+      final existing = latestByQuestion[questionId];
+      if (existing == null || job.createdAt.isAfter(existing.createdAt)) {
+        latestByQuestion[questionId] = job;
+      }
+    }
+
+    final snapshots = <QuestionAnalysisTaskSnapshot>[];
+    for (final job in latestByQuestion.values) {
+      try {
+        snapshots.add(coordinator.snapshotFromJob(
+          job,
+          dependencyJobs: job.taskSpec.dependencyJobIds
+              .map((id) => jobsById[id])
+              .whereType<AnalysisJob>(),
+          relatedJobs: jobs.where(
+            (item) =>
+                item.taskSpec.parentQuestionId == job.taskSpec.parentQuestionId,
+          ),
+        ));
+      } catch (_) {
+        // A malformed legacy task must not break the whole home screen.
+      }
+    }
+    snapshots.sort(_compareAnalysisTasks);
+    return snapshots;
+  });
+});
+
+int _compareAnalysisTasks(
+  QuestionAnalysisTaskSnapshot left,
+  QuestionAnalysisTaskSnapshot right,
+) {
+  final leftRank = _analysisTaskRank(left.job.status);
+  final rightRank = _analysisTaskRank(right.job.status);
+  if (leftRank != rightRank) return leftRank.compareTo(rightRank);
+  if (left.job.status == AnalysisJobStatus.queued) {
+    return left.job.createdAt.compareTo(right.job.createdAt);
+  }
+  return right.job.createdAt.compareTo(left.job.createdAt);
+}
+
+int _analysisTaskRank(AnalysisJobStatus status) => switch (status) {
+      AnalysisJobStatus.running => 0,
+      AnalysisJobStatus.queued => 1,
+      AnalysisJobStatus.completed => 2,
+      AnalysisJobStatus.failed => 3,
+      AnalysisJobStatus.cancelled => 4,
+    };
 
 final Provider<ImageStorageService> imageStorageServiceProvider =
     Provider<ImageStorageService>((ref) {
@@ -108,27 +231,40 @@ Future<QuestionSplitSession> buildQuestionSplitSession(
       await _resolveSplitResult(source, splitter: splitter);
 
   final hasMultipleCandidates = result.hasMultipleCandidates;
+  var failedCandidateCount = 0;
+  var retryingCandidateCount = 0;
+  final drafts = <QuestionSplitDraft>[];
+  for (final candidate in result.candidates) {
+    final snapshot = source.candidateAnalyses
+        .where((analysis) => analysis.order == candidate.order)
+        .cast<CandidateAnalysisSnapshot?>()
+        .firstWhere((analysis) => analysis != null, orElse: () => null);
+    final canSave = !hasMultipleCandidates || (snapshot?.isSuccessful ?? false);
+    final isRetrying = snapshot?.status == CandidateAnalysisStatus.queued ||
+        snapshot?.status == CandidateAnalysisStatus.running;
+    if (isRetrying) {
+      retryingCandidateCount++;
+      continue;
+    }
+    if (!canSave) {
+      failedCandidateCount++;
+      continue;
+    }
+    drafts.add(QuestionSplitDraft(
+      id: '${source.id}-${candidate.order - 1}',
+      text: candidate.text,
+      selected: true,
+      originalOrder: candidate.order,
+      contentFormat: source.contentFormat,
+    ));
+  }
 
   return QuestionSplitSession(
     source: source,
     strategy: result.strategy,
-    drafts: result.candidates.map((candidate) {
-      final snapshot = source.candidateAnalyses
-          .where((analysis) => analysis.order == candidate.order)
-          .cast<CandidateAnalysisSnapshot?>()
-          .firstWhere((analysis) => analysis != null, orElse: () => null);
-      final canSave =
-          !hasMultipleCandidates || (snapshot?.isSuccessful ?? false);
-      return QuestionSplitDraft(
-        id: '${source.id}-${candidate.order - 1}',
-        text: candidate.text,
-        selected: canSave,
-        originalOrder: candidate.order,
-        contentFormat: source.contentFormat,
-        canSave: canSave,
-        disabledReason: canSave ? null : '解析失败，暂不可保存',
-      );
-    }).toList(),
+    drafts: drafts,
+    failedCandidateCount: failedCandidateCount,
+    retryingCandidateCount: retryingCandidateCount,
   );
 }
 
@@ -160,6 +296,9 @@ QuestionRecord buildSplitQuestionRecord({
       );
   final hasMultipleCandidates =
       source.splitResult?.hasMultipleCandidates ?? false;
+  if (hasMultipleCandidates && !(candidateSnapshot?.isSuccessful ?? false)) {
+    throw StateError('解析失败的子题不能保存到错题本。');
+  }
   final analysisResult = candidateSnapshot?.analysisResult ??
       (hasMultipleCandidates ? null : source.analysisResult);
   final savedExercises = (candidateSnapshot?.savedExercises ??
@@ -310,6 +449,9 @@ final StateProvider<Subject?> selectedSubjectFilterProvider =
 final StateProvider<MasteryLevel?> selectedMasteryFilterProvider =
     StateProvider<MasteryLevel?>((ref) => null);
 
+final StateProvider<bool> selectedCreatedTodayFilterProvider =
+    StateProvider<bool>((ref) => false);
+
 final StateProvider<String> searchQueryProvider =
     StateProvider<String>((ref) => '');
 
@@ -346,13 +488,21 @@ final FutureProvider<List<QuestionRecord>> filteredQuestionListProvider =
 
   final subject = ref.watch(selectedSubjectFilterProvider);
   final mastery = ref.watch(selectedMasteryFilterProvider);
+  final createdToday = ref.watch(selectedCreatedTodayFilterProvider);
   final query = ref.watch(searchQueryProvider).toLowerCase();
   final knowledgePoint = ref.watch(selectedKnowledgePointFilterProvider);
   final selectedTags = ref.watch(selectedTagsFilterProvider);
 
+  final now = DateTime.now();
   return all.where((QuestionRecord q) {
     if (subject != null && q.subject != subject) return false;
     if (mastery != null && q.masteryLevel != mastery) return false;
+    if (createdToday &&
+        (q.createdAt.year != now.year ||
+            q.createdAt.month != now.month ||
+            q.createdAt.day != now.day)) {
+      return false;
+    }
     if (query.isNotEmpty &&
         !q.normalizedQuestionText.toLowerCase().contains(query)) {
       return false;

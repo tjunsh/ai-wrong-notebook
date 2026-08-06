@@ -21,10 +21,10 @@ class SubjectManagementScreen extends ConsumerWidget {
       body: questionsAsync.when(
         data: (questions) => ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: Subject.values.length,
+          itemCount: Subject.selectableValues.length,
           itemBuilder: (context, index) {
             final colorScheme = Theme.of(context).colorScheme;
-            final subject = Subject.values[index];
+            final subject = Subject.selectableValues[index];
             final count = questions.where((q) => q.subject == subject).length;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),

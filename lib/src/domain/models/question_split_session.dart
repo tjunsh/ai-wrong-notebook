@@ -44,11 +44,19 @@ class QuestionSplitSession {
     required this.source,
     required this.drafts,
     required this.strategy,
+    this.failedCandidateCount = 0,
+    this.retryingCandidateCount = 0,
   });
 
   final QuestionRecord source;
   final List<QuestionSplitDraft> drafts;
   final QuestionSplitStrategy strategy;
+
+  /// Failed candidates are deliberately kept out of the save checklist.
+  final int failedCandidateCount;
+
+  /// A save must not terminate a scan while one of its retries is in flight.
+  final int retryingCandidateCount;
 
   bool get hasSelectedDrafts => drafts.any(
         (draft) =>
@@ -59,11 +67,16 @@ class QuestionSplitSession {
     QuestionRecord? source,
     List<QuestionSplitDraft>? drafts,
     QuestionSplitStrategy? strategy,
+    int? failedCandidateCount,
+    int? retryingCandidateCount,
   }) {
     return QuestionSplitSession(
       source: source ?? this.source,
       drafts: drafts ?? this.drafts,
       strategy: strategy ?? this.strategy,
+      failedCandidateCount: failedCandidateCount ?? this.failedCandidateCount,
+      retryingCandidateCount:
+          retryingCandidateCount ?? this.retryingCandidateCount,
     );
   }
 }

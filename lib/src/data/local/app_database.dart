@@ -8,11 +8,19 @@ import 'package:smart_wrong_notebook/src/data/local/tables/question_records.dart
 import 'package:smart_wrong_notebook/src/data/local/tables/generated_exercises.dart';
 import 'package:smart_wrong_notebook/src/data/local/tables/review_logs.dart';
 import 'package:smart_wrong_notebook/src/data/local/tables/settings_entries.dart';
+import 'package:smart_wrong_notebook/src/data/local/tables/ai_conversation_messages.dart';
+import 'package:smart_wrong_notebook/src/data/local/tables/analysis_jobs.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(
-    tables: [QuestionRecords, GeneratedExercises, ReviewLogs, SettingsEntries])
+@DriftDatabase(tables: [
+  QuestionRecords,
+  GeneratedExercises,
+  ReviewLogs,
+  SettingsEntries,
+  AiConversationMessages,
+  AnalysisJobs,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase._internal(super.e);
 
@@ -26,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -56,6 +64,15 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await migrator.addColumn(
                 generatedExercises, generatedExercises.diagramDataJson);
+          }
+          if (from < 6) {
+            await migrator.createTable(aiConversationMessages);
+          }
+          if (from < 7) {
+            await migrator.createTable(analysisJobs);
+          }
+          if (from >= 7 && from < 8) {
+            await migrator.addColumn(analysisJobs, analysisJobs.progressJson);
           }
         },
       );

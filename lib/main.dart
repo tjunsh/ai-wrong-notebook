@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,7 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/drift_settings_repository.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/drift_question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/drift_ai_conversation_repository.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/drift_analysis_job_repository.dart';
 import 'package:smart_wrong_notebook/src/data/local/app_database.dart';
+import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
+import 'package:smart_wrong_notebook/src/data/services/app_analysis_job_runner.dart';
+import 'package:smart_wrong_notebook/src/data/services/ai_learning_task_coordinator.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_coordinator.dart';
+import 'package:smart_wrong_notebook/src/domain/services/analysis_job_queue_executor.dart';
 import 'package:smart_wrong_notebook/src/app/theme/app_theme.dart';
 import 'package:smart_wrong_notebook/src/features/home/presentation/home_screen.dart';
 import 'package:smart_wrong_notebook/src/features/notebook/presentation/notebook_screen.dart';
@@ -23,6 +32,7 @@ import 'package:smart_wrong_notebook/src/features/ocr/presentation/question_save
 import 'package:smart_wrong_notebook/src/features/ocr/presentation/question_split_confirmation_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_loading_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_result_screen.dart';
+import 'package:smart_wrong_notebook/src/features/analysis/presentation/question_text_correction_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/exercise_practice_screen.dart';
 import 'package:smart_wrong_notebook/src/features/review/presentation/review_history_screen.dart';
 import 'package:smart_wrong_notebook/src/data/files/image_storage_service.dart';
@@ -35,6 +45,29 @@ void main() async {
   final db = AppDatabase();
   final settingsRepo = DriftSettingsRepository(db);
   final questionRepo = DriftQuestionRepository(db);
+  final aiConversationRepo = DriftAiConversationRepository(db);
+  final aiService = AiAnalysisService(settingsRepository: settingsRepo);
+  final analysisJobRepo = DriftAnalysisJobRepository(db);
+  final analysisJobExecutor = AnalysisJobQueueExecutor(
+    repository: analysisJobRepo,
+    runner: AppAnalysisJobRunner(
+      aiService,
+      questionRepository: questionRepo,
+      analysisJobRepository: analysisJobRepo,
+    ),
+  );
+  final questionAnalysisCoordinator = QueuedQuestionAnalysisCoordinator(
+    service: aiService,
+    settingsRepository: settingsRepo,
+    repository: analysisJobRepo,
+    executor: analysisJobExecutor,
+  );
+  final aiLearningTaskCoordinator = QueuedAiLearningTaskCoordinator(
+    settingsRepository: settingsRepo,
+    repository: analysisJobRepo,
+    executor: analysisJobExecutor,
+    questionRepository: questionRepo,
+  );
 
   final router = GoRouter(
     initialLocation: '/',
@@ -99,6 +132,10 @@ void main() async {
           path: '/analysis/result',
           builder: (context, state) => const AnalysisResultScreen()),
       GoRoute(
+        path: '/analysis/text-correction',
+        builder: (context, state) => const QuestionTextCorrectionScreen(),
+      ),
+      GoRoute(
           path: '/exercise/practice',
           builder: (context, state) => const ExercisePracticeScreen()),
       GoRoute(
@@ -125,7 +162,13 @@ void main() async {
       overrides: [
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         questionRepositoryProvider.overrideWithValue(questionRepo),
-        // 注意：不要 override aiAnalysisServiceProvider，让它使用 settingsRepo
+        aiConversationRepositoryProvider.overrideWithValue(aiConversationRepo),
+        analysisJobRepositoryProvider.overrideWithValue(analysisJobRepo),
+        aiAnalysisServiceProvider.overrideWithValue(aiService),
+        questionAnalysisCoordinatorProvider
+            .overrideWithValue(questionAnalysisCoordinator),
+        aiLearningTaskCoordinatorProvider
+            .overrideWithValue(aiLearningTaskCoordinator),
         imageStorageServiceProvider.overrideWithValue(ImageStorageService()),
       ],
       child: Consumer(
@@ -140,6 +183,8 @@ void main() async {
       ),
     ),
   );
+
+  unawaited(analysisJobExecutor.initialize());
 }
 
 class ScaffoldWithNavBar extends StatelessWidget {

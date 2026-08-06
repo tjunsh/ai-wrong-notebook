@@ -116,4 +116,15 @@ void main() {
     expect(legacyRestored.rootQuestionId, isNull);
     expect(legacyRestored.splitOrder, 2);
   });
+
+  test('missing or malformed subject remains unknown instead of math', () {
+    final missing = QuestionRecord.fromJson(<String, dynamic>{'id': 'missing'});
+    final malformed = QuestionRecord.fromJson(<String, dynamic>{
+      'id': 'malformed',
+      'subject': 'not-a-subject',
+    });
+
+    expect(missing.subject, Subject.unknown);
+    expect(malformed.subject, Subject.unknown);
+  });
 }

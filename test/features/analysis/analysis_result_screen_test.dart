@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/services/scan_task_lifecycle_service.dart';
 import 'package:smart_wrong_notebook/src/data/services/question_split_service.dart';
 import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
@@ -10,8 +12,80 @@ import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_split_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_result_screen.dart';
+import 'package:smart_wrong_notebook/src/features/analysis/presentation/question_text_correction_screen.dart';
 
 void main() {
+  testWidgets('failed candidate offers an individual retry action',
+      (tester) async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        questionSplitServiceProvider
+            .overrideWithValue(const QuestionSplitService()),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(currentQuestionProvider.notifier).state =
+        QuestionRecord.draft(
+      id: 'q-partial-retry',
+      imagePath: '',
+      subject: Subject.math,
+      recognizedText: '1. 第一题\n2. 第二题',
+    ).copyWith(
+      splitResult: const QuestionSplitResult(
+        sourceText: '1. 第一题\n2. 第二题',
+        strategy: QuestionSplitStrategy.numbered,
+        candidates: <QuestionSplitCandidate>[
+          QuestionSplitCandidate(
+            id: 'candidate-1',
+            order: 1,
+            text: '第一题',
+            strategy: QuestionSplitStrategy.numbered,
+          ),
+          QuestionSplitCandidate(
+            id: 'candidate-2',
+            order: 2,
+            text: '第二题',
+            strategy: QuestionSplitStrategy.numbered,
+          ),
+        ],
+      ),
+      candidateAnalyses: const <CandidateAnalysisSnapshot>[
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-1',
+          order: 1,
+          questionText: '第一题',
+          analysisResult: AnalysisResult(
+            finalAnswer: 'A',
+            steps: <String>['步骤'],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
+        ),
+        CandidateAnalysisSnapshot(
+          candidateId: 'candidate-2',
+          order: 2,
+          questionText: '第二题',
+          status: CandidateAnalysisStatus.failed,
+          errorMessage: 'HTTP 503',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: AnalysisResultScreen()),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('第 2 题'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('第 2 题解析失败'), findsOneWidget);
+    expect(find.text('重试第 2 题'), findsOneWidget);
+    expect(find.textContaining('HTTP 503'), findsOneWidget);
+  });
+
   testWidgets('analysis result screen shows repaired consistency notice',
       (tester) async {
     final container = ProviderContainer(
@@ -124,6 +198,87 @@ void main() {
 
     expect(find.text('可能解法'), findsOneWidget);
     expect(find.text('需核对 10 的标注含义'), findsOneWidget);
+    expect(find.text('核对题干后重新解析'), findsOneWidget);
+  });
+
+  testWidgets('edited question text starts a fresh analysis draft',
+      (tester) async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        questionSplitServiceProvider
+            .overrideWithValue(const QuestionSplitService()),
+        scanTaskLifecycleServiceProvider.overrideWithValue(
+          ScanTaskLifecycleService(
+            analysisJobs: null,
+            questions: InMemoryQuestionRepository(),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(currentQuestionProvider.notifier).state =
+        QuestionRecord.draft(
+      id: 'q-corrected',
+      imagePath: '/tmp/q-corrected.jpg',
+      subject: Subject.chemistry,
+      recognizedText: '共取氯酸钾 15.8 g。',
+    ).copyWith(
+      analysisResult: const AnalysisResult(
+        finalAnswer: '题目信息不足。',
+        steps: <String>['未知量多于方程。'],
+        aiTags: <String>['质量守恒'],
+        knowledgePoints: <String>['化学计算'],
+        mistakeReason: '题干对象不明确。',
+        studyAdvice: '核对质量对应的物质。',
+        consistencyStatus: AnalysisConsistencyStatus.needsReview,
+        consistencyNote: '请核对 15.8 g 指的是氯酸钾还是混合物。',
+        visualAssumptionStatus: VisualAssumptionStatus.needsReview,
+      ),
+      aiTags: const <String>['质量守恒'],
+      aiKnowledgePoints: const <String>['化学计算'],
+    );
+
+    final router = GoRouter(
+      initialLocation: '/analysis/result',
+      routes: <GoRoute>[
+        GoRoute(
+          path: '/analysis/result',
+          builder: (_, __) => const AnalysisResultScreen(),
+        ),
+        GoRoute(
+          path: '/analysis/loading',
+          builder: (_, __) => const Scaffold(body: Text('LOADING_SCREEN')),
+        ),
+        GoRoute(
+          path: '/analysis/text-correction',
+          builder: (_, __) => const QuestionTextCorrectionScreen(),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('核对题干后重新解析'));
+    await tester.pumpAndSettle();
+    expect(find.text('核对题干'), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextField),
+      '共取氯酸钾和二氧化锰混合物 15.8 g。',
+    );
+    await tester.tap(find.text('重新解析'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final updated = container.read(currentQuestionProvider);
+    expect(find.text('LOADING_SCREEN'), findsOneWidget);
+    expect(updated?.correctedText, '共取氯酸钾和二氧化锰混合物 15.8 g。');
+    expect(updated?.analysisResult, isNull);
+    expect(updated?.candidateAnalyses, isEmpty);
   });
 
   testWidgets('analysis result screen builds with latex content',
@@ -193,6 +348,74 @@ void main() {
 
     expect(find.text('AI 解析结果'), findsOneWidget);
     expect(find.byType(AnalysisResultScreen), findsOneWidget);
+  });
+
+  testWidgets(
+      'analysis result screen focuses on current analysis and hides practice entry',
+      (tester) async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        questionSplitServiceProvider
+            .overrideWithValue(const QuestionSplitService()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(currentQuestionProvider.notifier).state =
+        QuestionRecord.draft(
+      id: 'q-main-flow',
+      imagePath: '',
+      subject: Subject.math,
+      recognizedText: r'已知 \(x^2+1=5\)，求 \(x\) 的值。',
+    ).copyWith(
+      analysisResult: const AnalysisResult(
+        finalAnswer: r'\(x=\pm2\)',
+        steps: <String>[r'两边同时减去 1，得 \(x^2=4\)。', r'所以 \(x=\pm2\)。'],
+        aiTags: <String>['平方方程'],
+        knowledgePoints: <String>['平方根'],
+        mistakeReason: '容易只写正根，漏掉负根。',
+        studyAdvice: '开平方时先写正负两个结果，再分别检验。',
+      ),
+      savedExercises: <GeneratedExercise>[
+        GeneratedExercise(
+          id: 'e-hidden',
+          questionId: 'q-main-flow',
+          generationMode: ExerciseGenerationMode.practice,
+          difficulty: '同级',
+          question: '这道练习不应出现在首轮解析结果页',
+          answer: 'A',
+          explanation: '首轮解析页不展示举一反三。',
+          createdAt: DateTime(2026),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: AnalysisResultScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('正确解答'), findsOneWidget);
+    expect(find.text('举一反三'), findsNothing);
+    expect(find.text('开始练习'), findsNothing);
+    expect(find.text('这道练习不应出现在首轮解析结果页'), findsNothing);
+
+    for (final section in <String>['解题步骤', '错因分析', '学习建议', '知识点']) {
+      await tester.scrollUntilVisible(
+        find.text(section),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(section), findsOneWidget);
+    }
+    await tester.scrollUntilVisible(
+      find.text('保存到错题本'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('保存到错题本'), findsOneWidget);
+    expect(find.text('放弃本次结果'), findsOneWidget);
   });
 
   testWidgets(
@@ -290,7 +513,7 @@ void main() {
   });
 
   testWidgets(
-      'analysis result screen prefers independent candidate analysis content',
+      'analysis result screen prefers independent candidate analysis content without exercises',
       (tester) async {
     final container = ProviderContainer(
       overrides: <Override>[
@@ -412,19 +635,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('当前第 1 题'), findsOneWidget);
+    expect(find.text('第一题答案'), findsOneWidget);
     expect(find.text('第一题练习'), findsNothing);
     await tester.drag(find.byType(ListView), const Offset(0, -2400));
     await tester.pumpAndSettle();
-    expect(find.text('第一题练习'), findsOneWidget);
+    expect(find.text('第一题练习'), findsNothing);
 
     await tester.drag(find.byType(ListView), const Offset(0, 1500));
     await tester.pumpAndSettle();
     await tester.tap(find.text('第 2 题'));
     await tester.pumpAndSettle();
+    expect(find.text('第二题答案'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -2400));
     await tester.pumpAndSettle();
 
-    expect(find.text('第二题练习'), findsOneWidget);
+    expect(find.text('第二题练习'), findsNothing);
   });
 
   testWidgets('analysis result screen isolates six-question sample analyses',
@@ -659,5 +884,66 @@ void main() {
 
     expect(find.text('SPLIT_CONFIRMATION'), findsOneWidget);
     expect(container.read(currentQuestionSplitSessionProvider), isNotNull);
+  });
+
+  testWidgets(
+      'analysis result screen discards only after explicit confirmation',
+      (tester) async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        questionSplitServiceProvider
+            .overrideWithValue(const QuestionSplitService()),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(currentQuestionProvider.notifier).state =
+        QuestionRecord.draft(
+      id: 'q-discard',
+      imagePath: '',
+      subject: Subject.math,
+      recognizedText: '已知 x+1=3，求 x。',
+    ).copyWith(
+      analysisResult: const AnalysisResult(
+        finalAnswer: 'x=2',
+        steps: <String>['移项'],
+        aiTags: <String>['方程'],
+        knowledgePoints: <String>['一次方程'],
+        mistakeReason: '移项错误',
+        studyAdvice: '注意符号',
+      ),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/analysis/result',
+      routes: <GoRoute>[
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: Text('HOME')),
+        ),
+        GoRoute(
+          path: '/analysis/result',
+          builder: (_, __) => const AnalysisResultScreen(),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('放弃本次结果'));
+    await tester.pumpAndSettle();
+    expect(find.text('确定放弃这次解析结果吗？此操作不可恢复。'), findsOneWidget);
+
+    await tester.tap(find.text('放弃'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('HOME'), findsOneWidget);
+    expect(container.read(currentQuestionProvider), isNull);
   });
 }

@@ -5,10 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
-import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_coordinator.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
-import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
-import 'package:smart_wrong_notebook/src/shared/utils/composite_worksheet_detector.dart';
 
 class AnalysisLoadingScreen extends ConsumerStatefulWidget {
   const AnalysisLoadingScreen({super.key});
@@ -23,6 +21,7 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
   String? _debugInfo;
   int _step = 0;
   String? _progressText;
+  bool _canContinueInBackground = false;
   Timer? _stepTimer;
 
   final _steps = const ['正在识别题目...', '正在理解题意...', '正在生成解析...', '即将完成...'];
@@ -79,139 +78,42 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
       debugInfo += '\n请到设置中配置 AI 服务';
     }
 
+    if (!mounted) return;
     setState(() => _debugInfo = debugInfo);
 
     try {
-      final service = ref.read(aiAnalysisServiceProvider);
-
-      var working = current;
-      final shouldAnalyzeImageDirectly = _shouldAnalyzeImageDirectly(working);
-      if (working.normalizedQuestionText.isEmpty &&
-          !shouldAnalyzeImageDirectly) {
-        final extraction = await service.extractQuestionStructure(
-          subjectName: working.subject.name,
-          imagePath: working.imagePath,
-          textHint: working.extractedQuestionText,
-        );
-        working = working.copyWith(
-          extractedQuestionText: extraction.extractedQuestionText,
-          normalizedQuestionText: extraction.normalizedQuestionText.isNotEmpty
-              ? extraction.normalizedQuestionText
-              : extraction.extractedQuestionText,
-          subject: extraction.subject ?? working.subject,
-          splitResult: extraction.splitResult,
-        );
-        ref.read(currentQuestionProvider.notifier).state = working;
-      }
-
-      if (!(working.splitResult?.hasMultipleCandidates ?? false)) {
-        final splitSeed = _splitSeedText(working);
-        if (splitSeed.isNotEmpty) {
-          final splitResult = await service.splitQuestionCandidates(
-            text: splitSeed,
-            subjectName: working.subject.name,
-          );
-          if (splitResult.hasMultipleCandidates) {
-            working = working.copyWith(splitResult: splitResult);
-            ref.read(currentQuestionProvider.notifier).state = working;
-          }
-        }
-      }
-
-      var candidateSnapshots = <CandidateAnalysisPayload>[];
-      CandidateAnalysisPayload? firstSuccessfulCandidate;
-      if (working.splitResult?.hasMultipleCandidates ?? false) {
-        final totalCandidates = working.splitResult!.candidates.length;
+      final coordinator = ref.read(questionAnalysisCoordinatorProvider);
+      final QuestionRecord updated;
+      if (coordinator is BackgroundQuestionAnalysisCoordinator) {
+        final handle = await coordinator.enqueue(current);
         if (mounted) {
-          setState(() {
-            _stepTimer?.cancel();
-            _progressText = '正在并行分析 $totalCandidates 道题...';
-          });
+          setState(() => _canContinueInBackground = true);
         }
-        candidateSnapshots = await service.analyzeSplitCandidates(
-          questionId: working.id,
-          subjectName: working.subject.name,
-          splitResult: working.splitResult!,
-          imagePath: working.imagePath,
+        updated = await coordinator.waitForResult(handle);
+      } else {
+        updated = await coordinator.analyze(
+          current,
           onProgress: (completed, total, {int failed = 0}) {
-            if (mounted) {
-              setState(() {
-                final suffix = failed > 0 ? '（$failed题失败）' : '';
-                _progressText = '已完成 $completed/$total题分析$suffix';
-              });
-            }
+            if (!mounted) return;
+            setState(() {
+              _stepTimer?.cancel();
+              if (completed == 0) {
+                _progressText = '正在依次分析 $total 道题...';
+                return;
+              }
+              final suffix = failed > 0 ? '（$failed题失败）' : '';
+              _progressText = '已完成 $completed/$total题分析$suffix';
+            });
           },
         );
-        firstSuccessfulCandidate = candidateSnapshots
-            .where((payload) => payload.isSuccessful)
-            .cast<CandidateAnalysisPayload?>()
-            .firstWhere((payload) => payload != null, orElse: () => null);
-        if (firstSuccessfulCandidate == null) {
-          throw AiAnalysisException('多题解析全部失败，请重试；系统不会保存缺少解析的子题。');
-        }
       }
-      final shouldUseImageForAnalysis =
-          shouldAnalyzeImageDirectly || _shouldUseImageForAnalysis(working);
-      final textForAnalysis = shouldUseImageForAnalysis
-          ? working.extractedQuestionText
-          : working.correctedText;
-
-      final analysis = firstSuccessfulCandidate?.analysisResult ??
-          await service.analyzeExtractedQuestion(
-            correctedText: textForAnalysis,
-            subjectName: working.subject.name,
-            imagePath: shouldUseImageForAnalysis ? working.imagePath : null,
-          );
-
-      if (firstSuccessfulCandidate == null &&
-          analysis.reconstructedQuestionText.trim().isNotEmpty) {
-        working = working.copyWith(
-          extractedQuestionText: analysis.reconstructedQuestionText,
-          normalizedQuestionText: analysis.reconstructedQuestionText,
-        );
-      }
-
-      final generatedExercises = firstSuccessfulCandidate?.savedExercises ??
-          (analysis is ParsedAnalysisResult
-              ? service.extractGeneratedExercisesFromContent(
-                  analysis.rawContent,
-                  questionId: working.id,
-                  sourceQuestionText: working.correctedText,
-                )
-              : service.extractGeneratedExercises(
-                  analysis,
-                  questionId: working.id,
-                  sourceQuestionText: working.correctedText,
-                ));
-
-      final updated = working.copyWith(
-        contentStatus: ContentStatus.ready,
-        analysisResult: analysis,
-        savedExercises: generatedExercises,
-        subject: analysis.subject ?? working.subject,
-        aiTags: analysis.aiTags,
-        aiKnowledgePoints: analysis.knowledgePoints,
-        candidateAnalyses: candidateSnapshots.map((payload) {
-          return CandidateAnalysisSnapshot(
-            candidateId: payload.candidateId,
-            order: payload.order,
-            questionText: payload.questionText,
-            analysisResult: payload.analysisResult,
-            savedExercises: payload.savedExercises,
-            subject: payload.subject,
-            aiTags: payload.aiTags,
-            aiKnowledgePoints: payload.aiKnowledgePoints,
-            status: payload.status,
-            errorMessage: payload.errorMessage,
-          );
-        }).toList(),
-      );
+      if (!mounted) return;
+      final activeQuestion = ref.read(currentQuestionProvider);
+      if (activeQuestion?.id != current.id) return;
       ref.read(currentQuestionProvider.notifier).state = updated;
 
-      if (mounted) {
-        _stepTimer?.cancel();
-        context.go('/analysis/result');
-      }
+      _stepTimer?.cancel();
+      context.go('/analysis/result');
     } on AiAnalysisException catch (e) {
       if (mounted) {
         setState(() {
@@ -220,45 +122,6 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
         });
       }
     }
-  }
-
-  bool _shouldAnalyzeImageDirectly(QuestionRecord question) {
-    final subject = question.subject;
-    final text = question.correctedText.trim();
-    if (subject == Subject.english ||
-        subject == Subject.chinese ||
-        subject == Subject.history ||
-        subject == Subject.geography ||
-        subject == Subject.politics) {
-      return text.isEmpty ||
-          isCompositeLanguageWorksheet(text, subject: subject);
-    }
-    return false;
-  }
-
-  bool _shouldUseImageForAnalysis(QuestionRecord question) {
-    final text = question.correctedText.trim();
-    final service = ref.read(aiAnalysisServiceProvider);
-    if (service.isGraphicalQuestion(
-      text,
-      question.subject.name,
-      imagePath: question.imagePath,
-    )) {
-      return true;
-    }
-    if (text.length < 20) return true;
-
-    return RegExp(
-      '如图|图中|图示|下图|上图|左图|右图|根据图|观察图|函数图像|坐标系|电路图|表格|统计图|示意图',
-    ).hasMatch(text);
-  }
-
-  String _splitSeedText(QuestionRecord question) {
-    final normalized = question.normalizedQuestionText.trim();
-    if (normalized.isNotEmpty) return normalized;
-    final extracted = question.extractedQuestionText.trim();
-    if (extracted.isNotEmpty) return extracted;
-    return question.correctedText.trim();
   }
 
   @override
@@ -277,6 +140,8 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
               step: _step,
               steps: _steps,
               progressText: _progressText,
+              onContinueInBackground:
+                  _canContinueInBackground ? () => context.go('/') : null,
             ),
     );
   }
@@ -341,6 +206,7 @@ class _AnalysisLoadingScreenState extends ConsumerState<AnalysisLoadingScreen> {
                   _errorMessage = null;
                   _progressText = null;
                   _step = 0;
+                  _canContinueInBackground = false;
                 });
                 _runAnalysis();
                 _animateSteps();
@@ -360,11 +226,13 @@ class _LoadingView extends StatefulWidget {
     required this.step,
     required this.steps,
     this.progressText,
+    this.onContinueInBackground,
   });
 
   final int step;
   final List<String> steps;
   final String? progressText;
+  final VoidCallback? onContinueInBackground;
 
   @override
   State<_LoadingView> createState() => _LoadingViewState();
@@ -425,10 +293,18 @@ class _LoadingViewState extends State<_LoadingView>
               widget.progressText ?? widget.steps[widget.step],
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
+            if (widget.onContinueInBackground != null) ...<Widget>[
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: widget.onContinueInBackground,
+                icon: const Icon(CupertinoIcons.camera, size: 18),
+                label: const Text('继续录题'),
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               widget.progressText != null
-                  ? '多题并行分析中，请稍候...'
+                  ? '多题依次分析中，请稍候...'
                   : 'AI 正在生成学习分析，请稍候...',
               style: TextStyle(
                   fontSize: 12,

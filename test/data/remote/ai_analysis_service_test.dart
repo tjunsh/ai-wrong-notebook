@@ -1,8 +1,20 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
+import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
+import 'package:smart_wrong_notebook/src/domain/models/ai_provider_config.dart';
 import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
+import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
+import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
+import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
+import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
+import 'package:smart_wrong_notebook/src/domain/models/question_split_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_controller.dart';
+import 'package:smart_wrong_notebook/src/shared/utils/composite_worksheet_detector.dart';
 
 class _Vector {
   const _Vector(this.x, this.y);
@@ -36,9 +48,733 @@ Map<String, _Vector> _diagramLabels(Map<String, dynamic> diagramData) {
   return labels;
 }
 
+void _registerUnknownSubjectPromptTests() {
+  test('extraction prompt omits unresolved subject but keeps explicit math',
+      () {
+    final service = AiAnalysisService(
+      settingsRepository: InMemorySettingsRepository(),
+    );
+
+    final unknownPrompt = service.buildExtractionPromptForTest(
+      subjectName: Subject.unknown.name,
+      textHint: '',
+    );
+    final mathPrompt = service.buildExtractionPromptForTest(
+      subjectName: Subject.math.name,
+      textHint: '',
+    );
+    final unknownAnalysisPrompt = service.buildAnalysisPromptForTest(
+      'Read the passage.',
+      Subject.unknown.name,
+    );
+
+    expect(unknownPrompt, isNot(contains('用户当前选择的科目提示')));
+    expect(unknownPrompt, isNot(contains('数学')));
+    expect(mathPrompt, contains('用户当前选择的科目提示：math'));
+    expect(unknownAnalysisPrompt, isNot(contains('unknown')));
+    expect(unknownAnalysisPrompt, contains('请先根据题目内容判断科目'));
+  });
+}
+
 void main() {
+  _registerUnknownSubjectPromptTests();
+
+  test('service generates exercises from saved question without image or OCR',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"generatedExercises\":[{\"difficulty\":\"简单\",\"question\":\"已知 \\\\(x+2=5\\\\)，求 \\\\(x\\\\)\",\"options\":[\"A. 1\",\"B. 2\",\"C. 3\",\"D. 4\"],\"answer\":\"C\",\"explanation\":\"两边同时减去 \\\\(2\\\\)，得 \\\\(x=3\\\\)。\"},{\"difficulty\":\"同级\",\"question\":\"已知 \\\\(y+4=9\\\\)，求 \\\\(y\\\\)\",\"options\":[\"A. 3\",\"B. 4\",\"C. 5\",\"D. 6\"],\"answer\":\"C\",\"explanation\":\"两边同时减去 \\\\(4\\\\)，得 \\\\(y=5\\\\)。\"},{\"difficulty\":\"提高\",\"question\":\"已知 \\\\(2z+1=7\\\\)，求 \\\\(z\\\\)\",\"options\":[\"A. 2\",\"B. 3\",\"C. 4\",\"D. 5\"],\"answer\":\"B\",\"explanation\":\"先移项得 \\\\(2z=6\\\\)，所以 \\\\(z=3\\\\)。\"}]}"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final question = QuestionRecord(
+      id: 'q-saved-1',
+      imagePath: '/tmp/unused.jpg',
+      subject: Subject.math,
+      extractedQuestionText: '已知 \\(x+1=3\\)，求 \\(x\\)',
+      normalizedQuestionText: '已知 \\(x+1=3\\)，求 \\(x\\)',
+      contentFormat: QuestionContentFormat.plain,
+      tags: const <String>[],
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      lastReviewedAt: null,
+      reviewCount: 0,
+      isFavorite: false,
+      contentStatus: ContentStatus.ready,
+      masteryLevel: MasteryLevel.newQuestion,
+      analysisResult: const AnalysisResult(
+        subject: Subject.math,
+        finalAnswer: '\\(x=2\\)',
+        finalAnswerDerivation: '两边同时减去 1。',
+        steps: <String>['两边同时减去 1，得到 \\(x=2\\)。'],
+        aiTags: <String>['一次方程'],
+        knowledgePoints: <String>['等式性质'],
+        mistakeReason: '移项时容易忘记变号。',
+        studyAdvice: '先把未知数单独留在一边。',
+      ),
+    );
+
+    try {
+      final exercises = await service.generateExercisesForQuestion(question);
+
+      expect(exercises, hasLength(3));
+      expect(exercises.first.questionId, 'q-saved-1');
+      expect(exercises.first.question, contains('x+2=5'));
+      expect(requests, hasLength(1));
+      expect(requests.single, isNot(contains('image_url')));
+      expect(requests.single, contains('只生成练习题'));
+      expect(requests.single, contains('不重新识别图片'));
+      expect(requests.single, contains('generatedExercises 最多 3 道'));
+      expect(requests.single, contains('无法保证质量，可以少于 3 道'));
+      expect(requests.single, isNot(contains('generatedExercises 必须恰好 3 道')));
+      expect(requests.single, isNot(contains('请先做题目结构化提取')));
+      expect(requests.single, isNot(contains('解析优先模式')));
+    } finally {
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test('service avoids exercises that duplicate existing saved practice',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"generatedExercises\":[{\"difficulty\":\"简单\",\"question\":\"已知 \\\\(x^2=9\\\\)，求 \\\\(x\\\\) 的值。\",\"options\":[\"A. \\\\(x=3\\\\)\",\"B. \\\\(x=-3\\\\)\",\"C. \\\\(x=\\\\pm 3\\\\)\",\"D. \\\\(x=9\\\\)\"],\"answer\":\"C\",\"explanation\":\"平方等于 9 的数有 3 和 -3，所以 \\\\(x=\\\\pm3\\\\)。\"},{\"difficulty\":\"同级\",\"question\":\"已知 \\\\(y^2=16\\\\)，求 \\\\(y\\\\) 的值。\",\"options\":[\"A. \\\\(y=4\\\\)\",\"B. \\\\(y=-4\\\\)\",\"C. \\\\(y=\\\\pm4\\\\)\",\"D. \\\\(y=16\\\\)\"],\"answer\":\"C\",\"explanation\":\"平方等于 16 的数有 4 和 -4，所以 \\\\(y=\\\\pm4\\\\)。\"}]}"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final question = QuestionRecord(
+      id: 'q-saved-repeat',
+      imagePath: '/tmp/unused.jpg',
+      subject: Subject.math,
+      extractedQuestionText: '已知 \\(x^2+1=5\\)，求 \\(x\\)',
+      normalizedQuestionText: '已知 \\(x^2+1=5\\)，求 \\(x\\)',
+      contentFormat: QuestionContentFormat.plain,
+      tags: const <String>[],
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      lastReviewedAt: null,
+      reviewCount: 0,
+      isFavorite: false,
+      contentStatus: ContentStatus.ready,
+      masteryLevel: MasteryLevel.newQuestion,
+      analysisResult: const AnalysisResult(
+        subject: Subject.math,
+        finalAnswer: '\\(x=\\pm2\\)',
+        finalAnswerDerivation: '两边同时减去 1，再开平方。',
+        steps: <String>['两边同时减去 1，得到 \\(x^2=4\\)。'],
+        aiTags: <String>['平方方程'],
+        knowledgePoints: <String>['开平方'],
+        mistakeReason: '容易漏掉负根。',
+        studyAdvice: '开平方时注意正负两个结果。',
+      ),
+      savedExercises: <GeneratedExercise>[
+        GeneratedExercise(
+          id: 'old-1',
+          questionId: 'q-saved-repeat',
+          generationMode: ExerciseGenerationMode.practice,
+          difficulty: '简单',
+          question: '已知 \\(x^2=9\\)，求 \\(x\\) 的值。',
+          options: const <String>[
+            'A. \\(x=3\\)',
+            'B. \\(x=-3\\)',
+            'C. \\(x=\\pm 3\\)',
+            'D. \\(x=9\\)'
+          ],
+          answer: 'C',
+          explanation: '平方等于 9 的数有 3 和 -3，所以 \\(x=\\pm3\\)。',
+          createdAt: DateTime(2026),
+          order: 0,
+        ),
+      ],
+    );
+
+    try {
+      final exercises = await service.generateExercisesForQuestion(question);
+
+      final exerciseQuestions =
+          exercises.map((exercise) => exercise.question).toList();
+      expect(exerciseQuestions, contains('已知 \\(y^2=16\\)，求 \\(y\\) 的值。'));
+      expect(
+          exerciseQuestions, isNot(contains('已知 \\(x^2=9\\)，求 \\(x\\) 的值。')));
+      expect(requests, hasLength(1));
+      expect(requests.single, contains('已有练习题'));
+      expect(requests.single, contains('不要生成与已有练习题重复'));
+      expect(requests.single, contains('x^2=9'));
+    } finally {
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test('service answers follow-up from saved question without image or OCR',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "因为等式两边同时减去同一个数，等式仍然成立，所以可以先移项。"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final question = QuestionRecord(
+      id: 'q-follow-up-1',
+      imagePath: '/tmp/unused.jpg',
+      subject: Subject.math,
+      extractedQuestionText: '已知 \\(x+1=3\\)，求 \\(x\\)',
+      normalizedQuestionText: '已知 \\(x+1=3\\)，求 \\(x\\)',
+      contentFormat: QuestionContentFormat.plain,
+      tags: const <String>[],
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      lastReviewedAt: null,
+      reviewCount: 0,
+      isFavorite: false,
+      contentStatus: ContentStatus.ready,
+      masteryLevel: MasteryLevel.newQuestion,
+      analysisResult: const AnalysisResult(
+        subject: Subject.math,
+        finalAnswer: '\\(x=2\\)',
+        finalAnswerDerivation: '两边同时减去 1。',
+        steps: <String>['两边同时减去 1，得到 \\(x=2\\)。'],
+        aiTags: <String>['一次方程'],
+        knowledgePoints: <String>['等式性质'],
+        mistakeReason: '移项时容易忘记变号。',
+        studyAdvice: '先把未知数单独留在一边。',
+      ),
+    );
+
+    try {
+      final answer = await service.answerQuestionFollowUp(
+        question: question,
+        userQuestion: '为什么要先移项？',
+      );
+
+      expect(answer, contains('等式两边同时减去同一个数'));
+      expect(requests, hasLength(1));
+      expect(requests.single, isNot(contains('image_url')));
+      expect(requests.single, contains('本任务只做答疑'));
+      expect(requests.single, contains('为什么要先移项'));
+      expect(requests.single, isNot(contains('请先做题目结构化提取')));
+      expect(requests.single, isNot(contains('解析优先模式')));
+      expect(requests.single, isNot(contains('generatedExercises 必须恰好 3 道')));
+    } finally {
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test('service analyzes long chemistry text without resending image',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"化学\",\"finalAnswer\":\"取代反应\",\"finalAnswerDerivation\":\"由题干文字判断。\",\"reconstructedQuestionText\":\"有机合成路线题\",\"steps\":[\"根据结构化文本分析。\"],\"aiTags\":[\"有机合成\"],\"knowledgePoints\":[\"反应类型\"],\"mistakeReason\":\"图示复杂，需要核对。\",\"studyAdvice\":\"核对原图关键标注。\"}"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final imageFile = File(
+      '${Directory.systemTemp.path}/swn-chem-text-only-${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await imageFile.writeAsBytes(<int>[0xff, 0xd8, 0xff, 0xd9]);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText:
+            '某治疗胃溃疡的药物中间体 N，可通过图示合成路线制得。A 在 Cl2/FeCl3 条件下生成 B；B 经 NaOH、H+ 生成 D；D 与乙酸酐反应生成 E。请回答 A 到 B 的反应类型，并写出相关官能团变化。',
+        subjectName: 'chemistry',
+        imagePath: imageFile.path,
+      );
+
+      expect(analysis.finalAnswer, '取代反应');
+      expect(requests, hasLength(1));
+      expect(requests.single, isNot(contains('image_url')));
+      expect(requests.single, contains('本次只做解析'));
+      expect(requests.single, isNot(contains('生成举一反三的练习题')));
+      expect(requests.single, isNot(contains('generatedExercises 必须恰好 3 道')));
+    } finally {
+      await imageFile.delete();
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test('service still sends image for graphical math analysis', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"数学\",\"finalAnswer\":\"70^\\circ\",\"finalAnswerDerivation\":\"由等腰三角形底角相等得到。\",\"reconstructedQuestionText\":\"如图，在三角形 ABC 中求角 B。\",\"steps\":[\"读图后根据等腰三角形性质计算。\"],\"aiTags\":[\"几何\"],\"knowledgePoints\":[\"等腰三角形\"],\"mistakeReason\":\"角度关系易看错。\",\"studyAdvice\":\"先读图确认条件。\"}"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final imageFile = File(
+      '${Directory.systemTemp.path}/swn-math-image-${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await imageFile.writeAsBytes(<int>[0xff, 0xd8, 0xff, 0xd9]);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText: '如图，在三角形 ABC 中，AB=AC，角 A=40 度，求角 B。',
+        subjectName: 'math',
+        imagePath: imageFile.path,
+      );
+
+      expect(analysis.finalAnswer, r'70^\circ');
+      expect(requests, hasLength(1));
+      expect(requests.single, contains('image_url'));
+    } finally {
+      await imageFile.delete();
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test('service sends image for instruction-only language analysis', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"英语\",\"finalAnswer\":\"1.C\",\"finalAnswerDerivation\":\"根据图片题干判断。\",\"reconstructedQuestionText\":\"Saving for a Rainy Day 语法选择题。\",\"steps\":[\"直接读取图片中的英文短文和选项。\"],\"aiTags\":[\"英语\"],\"knowledgePoints\":[\"语法选择\"],\"mistakeReason\":\"忽略上下文。\",\"studyAdvice\":\"通读全文。\"}"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final imageFile = File(
+      '${Directory.systemTemp.path}/swn-language-image-${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await imageFile.writeAsBytes(<int>[0xff, 0xd8, 0xff, 0xd9]);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText: '请识别图片中的英语题，整理完整题干并分析作答思路，生成同题型举一反三练习。',
+        subjectName: 'english',
+        imagePath: imageFile.path,
+      );
+
+      expect(analysis.finalAnswer, '1.C');
+      expect(requests, hasLength(1));
+      expect(requests.single, contains('image_url'));
+      expect(requests.single, contains('请识别图片中的英语题'));
+      expect(requests.single, contains('本次只做解析'));
+      expect(requests.single, isNot(contains('generatedExercises 必须恰好 3 道')));
+    } finally {
+      await imageFile.delete();
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
   test(
-      'fake analysis controller returns ready record with persistent exercises',
+      'service sends image and defers exercises for instruction-only Chinese analysis',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"语文\",\"finalAnswer\":\"陶渊明\",\"finalAnswerDerivation\":\"根据图片题干判断。\",\"reconstructedQuestionText\":\"《桃花源记》文常题。\",\"steps\":[\"直接读取图片中的文言题。\"],\"aiTags\":[\"语文\"],\"knowledgePoints\":[\"文学常识\"],\"mistakeReason\":\"混淆作者。\",\"studyAdvice\":\"整理文常。\"}"
+      }
+    }
+  ]
+}
+''');
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final imageFile = File(
+      '${Directory.systemTemp.path}/swn-chinese-image-${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await imageFile.writeAsBytes(<int>[0xff, 0xd8, 0xff, 0xd9]);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText: '请识别图片中的语文题，整理完整题干并分析作答思路，生成同题型举一反三练习。',
+        subjectName: 'chinese',
+        imagePath: imageFile.path,
+      );
+
+      expect(analysis.finalAnswer, '陶渊明');
+      expect(requests, hasLength(1));
+      expect(requests.single, contains('image_url'));
+      expect(requests.single, contains('请识别图片中的语文题'));
+      expect(requests.single, contains('本次只做解析'));
+      expect(requests.single, isNot(contains('generatedExercises 必须恰好 3 道')));
+    } finally {
+      await imageFile.delete();
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test(
+      'service falls back to existing chemistry text when image analysis returns 524',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var requestCount = 0;
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      requestCount++;
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      if (requestCount == 1) {
+        request.response.statusCode = 524;
+        request.response.headers.contentType = ContentType.text;
+        request.response.write('error code: 524');
+      } else {
+        request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"化学\",\"finalAnswer\":\"取代反应\",\"finalAnswerDerivation\":\"由已知文本判断。\",\"reconstructedQuestionText\":\"有机合成路线题\",\"steps\":[\"根据已有 OCR 文本分析。\"],\"aiTags\":[\"有机合成\"],\"knowledgePoints\":[\"反应类型\"],\"mistakeReason\":\"图示复杂，需要核对。\",\"studyAdvice\":\"核对原图关键标注。\"}"
+      }
+    }
+  ]
+}
+''');
+      }
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final imageFile = File(
+      '${Directory.systemTemp.path}/swn-524-fallback-${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await imageFile.writeAsBytes(<int>[0xff, 0xd8, 0xff, 0xd9]);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText: '某治疗胃溃疡的药物中间体 N，可通过图示合成路线制得。请回答 A 到 B 的反应类型。',
+        subjectName: 'chemistry',
+        imagePath: imageFile.path,
+      );
+
+      expect(analysis.finalAnswer, '取代反应');
+      expect(
+          analysis.visualAssumptionStatus, VisualAssumptionStatus.needsReview);
+      expect(requests, hasLength(2));
+      expect(requests.first, contains('image_url'));
+      expect(requests.last, isNot(contains('image_url')));
+    } finally {
+      await imageFile.delete();
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test(
+      'service extracts image text for instruction-only chemistry fallback after 524',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var requestCount = 0;
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      requestCount++;
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      if (requestCount == 1) {
+        request.response.statusCode = 524;
+        request.response.headers.contentType = ContentType.text;
+        request.response.write('error code: 524');
+      } else if (requestCount == 2) {
+        request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"化学\",\"extractedQuestionText\":\"9. 某治疗胃溃疡的药物中间体 N，可通过图示合成路线制得。A 在 Cl2/FeCl3 条件下生成 B。请回答 A 到 B 的反应类型。\",\"normalizedQuestionText\":\"9. 某治疗胃溃疡的药物中间体 N，可通过图示合成路线制得。A 在 Cl2/FeCl3 条件下生成 B。请回答 A 到 B 的反应类型。\"}"
+      }
+    }
+  ]
+}
+''');
+      } else {
+        request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"化学\",\"finalAnswer\":\"取代反应\",\"finalAnswerDerivation\":\"由 Cl2/FeCl3 判断为苯环亲电取代。\",\"reconstructedQuestionText\":\"有机合成路线题\",\"steps\":[\"A 到 B 使用 Cl2/FeCl3。\",\"判断为取代反应。\"],\"aiTags\":[\"有机合成\"],\"knowledgePoints\":[\"苯环卤代\"],\"mistakeReason\":\"不要误判为加成。\",\"studyAdvice\":\"先看反应条件。\"}"
+      }
+    }
+  ]
+}
+''');
+      }
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+    final imageFile = File(
+      '${Directory.systemTemp.path}/swn-524-instruction-fallback-${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await imageFile.writeAsBytes(<int>[0xff, 0xd8, 0xff, 0xd9]);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText: '请识别图片中的高二化学有机合成综合题，保持为一道大题处理，不要把小问误拆成独立题；整理题干、分析作答思路。',
+        subjectName: 'chemistry',
+        imagePath: imageFile.path,
+      );
+
+      expect(analysis.finalAnswer, '取代反应');
+      expect(requests, hasLength(3));
+      expect(requests.first, contains('image_url'));
+      expect(requests[1], contains('image_url'));
+      expect(requests.last, isNot(contains('image_url')));
+      expect(requests.last, contains('某治疗胃溃疡的药物中间体'));
+      expect(requests.last, isNot(contains('请识别图片中的高二化学')));
+    } finally {
+      await imageFile.delete();
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test('service retries long math proof analysis with compact prompt after 524',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var requestCount = 0;
+    final requests = <String>[];
+    final handler = server.listen((request) async {
+      requestCount++;
+      final body = await utf8.decoder.bind(request).join();
+      requests.add(body);
+      request.response.headers.contentType = ContentType.json;
+      if (requestCount == 1) {
+        request.response.statusCode = 524;
+        request.response.headers.contentType = ContentType.text;
+        request.response.write('error code: 524');
+      } else {
+        request.response.write(r'''
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"subject\":\"数学\",\"finalAnswer\":\"（1）D(-1)=(0,+\\\\infty)；（2）结论成立；（3）f(0)\\\\ge 1，且 f(x) 在 (0,+\\\\infty) 单调递增。\",\"finalAnswerDerivation\":\"根据 D(x) 的定义和题设包含关系得到。\",\"reconstructedQuestionText\":\"高考函数综合证明题\",\"steps\":[\"先由定义求 D(-1)。\",\"再用 D 集合包含关系证明单调性结论。\"],\"aiTags\":[\"函数\",\"证明\"],\"knowledgePoints\":[\"集合定义\",\"单调性\"],\"mistakeReason\":\"完整证明较长，需核对细节。\",\"studyAdvice\":\"先理解 D(x) 的含义。\"}"
+      }
+    }
+  ]
+}
+''');
+      }
+      await request.response.close();
+    });
+
+    final settings = InMemorySettingsRepository();
+    await settings.saveAiProviderConfig(
+      AiProviderConfig(
+        id: 'local',
+        displayName: 'Local',
+        baseUrl: 'http://${server.address.address}:${server.port}/v1',
+        model: 'gpt-5.5',
+        apiKey: 'test-key',
+      ),
+    );
+    final service = AiAnalysisService(settingsRepository: settings);
+
+    try {
+      final analysis = await service.analyzeExtractedQuestion(
+        correctedText:
+            r'19.（17分）已知函数 \(f(x)\) 的定义域为 \(\mathbb{R}\)，且当 \(x<0\) 时，\(f(x)=2^x\)。对任意 \(x_0\in\mathbb{R}\)，定义集合 \(D(x_0)=\{d\in\mathbb{R}\mid f(x_0+d)>f(x_0)\}\)。（1）若当 \(x\geq 0\) 时，\(f(x)=1-x\)，求 \(D(-1)\)；（2）若 \(f(x)\) 是奇函数，且 \(f(x_1)\leq f(x_2)\)，\(x_1x_2\neq0\)，证明：\(D(x_2)\subseteq D(x_1)\)；（3）设 \(f(x)\) 满足：① 若 \(f(x_1)\leq f(x_2)\)，则 \(D(x_2)\subseteq D(x_1)\)；② 当 \(0<x<1\) 时，\(f(x)<f(0)\)。证明：（i）\(f(0)\geq1\)；（ii）\(f(x)\) 在区间 \((0,+\infty)\) 上单调递增。',
+        subjectName: 'math',
+      );
+
+      expect(analysis.finalAnswer, contains('D(-1)'));
+      expect(requests, hasLength(2));
+      expect(requests.first, contains('解析优先模式'));
+      expect(requests.last, contains('紧凑解析模式'));
+      expect(requests.last, isNot(contains('generatedExercises 必须恰好 3 道')));
+    } finally {
+      await handler.cancel();
+      await server.close(force: true);
+    }
+  });
+
+  test(
+      'fake analysis controller returns ready record without first-pass exercises',
       () async {
     final controller = AnalysisController.fake();
     final record = await controller.analyze(
@@ -48,8 +784,7 @@ void main() {
     );
 
     expect(record.analysisResult?.finalAnswer, 'x = 3');
-    expect(record.savedExercises.length, 3);
-    expect(record.savedExercises.first.difficulty, '简单');
+    expect(record.savedExercises, isEmpty);
   });
 
   test('service parses final answer derivation and consistency metadata', () {
@@ -85,6 +820,25 @@ void main() {
     expect(restored.consistencyStatus, AnalysisConsistencyStatus.repaired);
     expect(restored.wasVerifierUsed, isTrue);
     expect(restored.finalAnswerDerivation, contains(r'\frac{1}{2}'));
+  });
+
+  test('service extracts content from SSE chat completion chunks', () {
+    final service = AiAnalysisService.fake();
+    const responseBody = '''
+data: {"choices":[{"delta":{"role":"assistant"}}]}
+data: {"choices":[{"delta":{"content":"{\\"subject\\":\\"数学\\","}}]}
+data: {"choices":[{"delta":{"content":"\\"finalAnswer\\":\\"x=1\\"}"}}]}
+data: [DONE]
+''';
+
+    final content = service.extractContentFromResponseForTest(
+      Response<String>(
+        requestOptions: RequestOptions(path: '/chat/completions'),
+        data: responseBody,
+      ),
+    );
+
+    expect(content, '{"subject":"数学","finalAnswer":"x=1"}');
   });
 
   test('service parses visual assumptions and marks low confidence for review',
@@ -215,6 +969,195 @@ void main() {
     expect(reviewed.consistencyStatus, AnalysisConsistencyStatus.needsReview);
     expect(reviewed.consistencyNote, '需核对 10 的标注含义');
     expect(reviewed.wasVerifierUsed, isTrue);
+  });
+
+  test('service routes chemistry HTTP 524 image failure to text fallback', () {
+    final service = AiAnalysisService.fake();
+    final requestOptions = RequestOptions(path: '/chat/completions');
+    final error = DioException(
+      requestOptions: requestOptions,
+      response: Response<dynamic>(
+        requestOptions: requestOptions,
+        statusCode: 524,
+        data: 'error code: 524',
+      ),
+    );
+
+    expect(
+      service.shouldUseExtractedTextFallbackAfterImageFailureForTest(
+        error,
+        'chemistry',
+      ),
+      isTrue,
+    );
+    expect(
+      service.shouldUseExtractedTextFallbackAfterImageFailureForTest(
+        error,
+        'math',
+      ),
+      isFalse,
+    );
+  });
+
+  test('service routes only chemistry empty SSE image failure to text fallback',
+      () {
+    final service = AiAnalysisService.fake();
+    const error = FormatException('Empty SSE chat completion content.');
+    const otherError = FormatException('Unexpected character');
+
+    expect(
+      service.shouldUseExtractedTextFallbackAfterImageFormatFailureForTest(
+        error,
+        'chemistry',
+      ),
+      isTrue,
+    );
+    expect(
+      service.shouldUseExtractedTextFallbackAfterImageFormatFailureForTest(
+        error,
+        'biology',
+      ),
+      isTrue,
+    );
+    expect(
+      service.shouldUseExtractedTextFallbackAfterImageFormatFailureForTest(
+        error,
+        'math',
+      ),
+      isFalse,
+    );
+    expect(
+      service.shouldUseExtractedTextFallbackAfterImageFormatFailureForTest(
+        otherError,
+        'chemistry',
+      ),
+      isFalse,
+    );
+  });
+
+  test('service retries transient handshake failures from provider', () {
+    final service = AiAnalysisService.fake();
+    final error = DioException(
+      requestOptions: RequestOptions(path: '/chat/completions'),
+      type: DioExceptionType.unknown,
+      error: const HandshakeException('Connection terminated during handshake'),
+    );
+
+    expect(service.shouldRetryPostForTest(error), isTrue);
+  });
+
+  test('service retries unknown provider failures without HTTP response', () {
+    final service = AiAnalysisService.fake();
+    final error = DioException(
+      requestOptions: RequestOptions(path: '/chat/completions'),
+      type: DioExceptionType.unknown,
+    );
+
+    expect(service.shouldRetryPostForTest(error), isTrue);
+  });
+
+  test('service retries HTTP status only when explicitly allowed', () {
+    final service = AiAnalysisService.fake();
+    final requestOptions = RequestOptions(path: '/chat/completions');
+    final error = DioException(
+      requestOptions: requestOptions,
+      response: Response<dynamic>(
+        requestOptions: requestOptions,
+        statusCode: 524,
+        data: 'error code: 524',
+      ),
+    );
+
+    expect(service.shouldRetryPostForTest(error), isFalse);
+    expect(
+      service.shouldRetryPostWithStatusCodesForTest(error, <int>{524}),
+      isTrue,
+    );
+  });
+
+  test('service limits extraction HTTP status retry to chemistry and biology',
+      () {
+    final service = AiAnalysisService.fake();
+
+    expect(
+      service.extractionRetryStatusCodesForSubjectForTest('chemistry'),
+      contains(524),
+    );
+    expect(
+      service.extractionRetryStatusCodesForSubjectForTest('化学'),
+      contains(524),
+    );
+    expect(
+      service.extractionRetryStatusCodesForSubjectForTest('biology'),
+      contains(524),
+    );
+    expect(
+      service.extractionRetryStatusCodesForSubjectForTest('math'),
+      isEmpty,
+    );
+    expect(
+      service.extractionRetryStatusCodesForSubjectForTest('physics'),
+      isEmpty,
+    );
+    expect(
+      service.extractionRetryStatusCodesForSubjectForTest('english'),
+      isEmpty,
+    );
+  });
+
+  test('service limits empty SSE extraction retry to chemistry and biology',
+      () {
+    final service = AiAnalysisService.fake();
+    const error = FormatException('Empty SSE chat completion content.');
+    const otherError = FormatException('Unexpected character');
+
+    expect(
+      service.shouldRetryEmptySseExtractionForTest(error, 'chemistry'),
+      isTrue,
+    );
+    expect(
+      service.shouldRetryEmptySseExtractionForTest(error, '化学'),
+      isTrue,
+    );
+    expect(
+      service.shouldRetryEmptySseExtractionForTest(error, 'biology'),
+      isTrue,
+    );
+    expect(
+      service.shouldRetryEmptySseExtractionForTest(error, 'math'),
+      isFalse,
+    );
+    expect(
+      service.shouldRetryEmptySseExtractionForTest(error, 'physics'),
+      isFalse,
+    );
+    expect(
+      service.shouldRetryEmptySseExtractionForTest(otherError, 'chemistry'),
+      isFalse,
+    );
+  });
+
+  test('service marks extraction fallback analysis as needs review', () {
+    final service = AiAnalysisService.fake();
+    const analysis = AnalysisResult(
+      finalAnswer: '答案',
+      steps: <String>['步骤'],
+      aiTags: <String>['有机'],
+      knowledgePoints: <String>['合成路线'],
+      mistakeReason: '读图标注复杂',
+      studyAdvice: '核对结构式',
+      consistencyStatus: AnalysisConsistencyStatus.consistent,
+    );
+
+    final reviewed = service.markExtractionFallbackForReviewForTest(
+      analysis,
+      extractedText: 'D 的分子式较模糊，疑为 C7H6O。',
+    );
+
+    expect(reviewed.visualAssumptionStatus, VisualAssumptionStatus.needsReview);
+    expect(reviewed.consistencyStatus, AnalysisConsistencyStatus.needsReview);
+    expect(reviewed.visualAssumptions?.needsManualReview, isTrue);
+    expect(reviewed.consistencyNote, contains('核对原图'));
   });
 
   test('service does not let visual assumption review skip answer mismatch',
@@ -638,6 +1581,9 @@ void main() {
 
     expect(prompt, isNot(contains('图形/示意图题分析要求')));
     expect(prompt, contains('请分析以下数学科目的错题'));
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
   });
 
   test('service parses extracted question structure json', () {
@@ -655,6 +1601,131 @@ void main() {
     expect(extraction.subject, Subject.physics);
     expect(extraction.extractedQuestionText, '如图所示，求电阻 R 两端电压。');
     expect(extraction.normalizedQuestionText, '如图所示，求电阻 R 两端的电压。');
+  });
+
+  test('service keeps physics choice question with table as one candidate', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "physics",
+  "extractedQuestionText": "6. LED灯发光的颜色与电压的对应关系如表1所示，LED灯发光时通过它的电流始终为0.02安。把这样的LED灯接入图3所示电路，闭合开关，当滑动变阻器的滑片在图示位置，LED灯发出黄色的光。下列方案中可使LED灯发红色的光的是\n表1：\nLED灯两端的电压（伏） | LED灯发光的颜色\n1.8 | 红\n2.4 | 黄\n3.2 | 蓝\n图3：电路中有LED灯、滑动变阻器R（滑片P在靠右位置）、电源和开关S串联。\nA. 向右移动滑片P，电源电压一定变大\nB. 向右移动滑片P，电源电压可能变小\nC. 向左移动滑片P，电源电压可能不变\nD. 向左移动滑片P，电源电压一定变大",
+  "normalizedQuestionText": "LED灯发光的颜色与其两端电压的对应关系如表1所示，LED灯发光时通过它的电流始终为 \(0.02\,\mathrm{A}\)。把这样的LED灯接入图3所示电路，闭合开关，当滑动变阻器的滑片在图示位置时，LED灯发出黄色的光。图3为由LED灯、滑动变阻器 \(R\)（滑片 \(P\) 在靠右位置）、电源和开关 \(S\) 组成的串联电路。下列方案中可使LED灯发红色的光的是（ ）\n\n表1：\n| LED灯两端的电压/\(\mathrm{V}\) | LED灯发光的颜色 |\n|---|---|\n| \(1.8\) | 红 |\n| \(2.4\) | 黄 |\n| \(3.2\) | 蓝 |\n\nA. 向右移动滑片 \(P\)，电源电压一定变大\nB. 向右移动滑片 \(P\)，电源电压可能变小\nC. 向左移动滑片 \(P\)，电源电压可能不变\nD. 向左移动滑片 \(P\)，电源电压一定变大"
+}
+''';
+
+    final extraction = service.parseExtractionResultForTest(raw);
+
+    expect(extraction.subject, Subject.physics);
+    expect(
+      isSingleChoiceQuestionWithOptionBlock(
+        extraction.normalizedQuestionText,
+        subject: extraction.subject,
+      ),
+      isTrue,
+    );
+    expect(extraction.splitResult?.strategy, QuestionSplitStrategy.fallback);
+    expect(extraction.splitResult?.candidates, hasLength(1));
+    expect(extraction.splitResult?.candidates.single.text, contains('表1'));
+    expect(
+        extraction.splitResult?.candidates.single.text, contains('A. 向右移动滑片'));
+  });
+
+  test('service does not split decimal table rows as numbered questions', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "物理",
+  "extractedQuestionText": "6. LED灯发光的颜色与电压的对应关系如表1所示。下列方案中可使LED灯发红色的光的是\nA. 向右移动滑片P，电源电压一定变大\nB. 向右移动滑片P，电源电压可能变小\nC. 向左移动滑片P，电源电压可能不变\nD. 向左移动滑片P，电源电压一定变大",
+  "normalizedQuestionText": "LED灯发光的颜色与其两端电压的对应关系如表1所示，LED灯发光时通过它的电流始终为 \\(0.02\\,\\mathrm{A}\\)。下列方案中可使LED灯发红色的光的是（ ）\n\n\\[\n\\begin{array}{c|c}\n\\text{LED灯两端的电压/伏} & \\text{LED灯发光的颜色} \\\\\n1.8 & \\text{红} \\\\\n2.4 & \\text{黄} \\\\\n3.2 & \\text{蓝}\n\\end{array}\n\\]\n\nA. 向右移动滑片 \\(P\\)，电源电压一定变大\nB. 向右移动滑片 \\(P\\)，电源电压可能变小\nC. 向左移动滑片 \\(P\\)，电源电压可能不变\nD. 向左移动滑片 \\(P\\)，电源电压一定变大"
+}
+''';
+
+    final extraction = service.parseExtractionResultForTest(raw);
+
+    expect(extraction.subject, Subject.physics);
+    expect(extraction.splitResult?.strategy, QuestionSplitStrategy.fallback);
+    expect(extraction.splitResult?.candidates, hasLength(1));
+    expect(extraction.splitResult?.candidates.single.text, contains('1.8'));
+    expect(
+        extraction.splitResult?.candidates.single.text, contains('A. 向右移动滑片'));
+  });
+
+  test('service keeps a single physics data question with a supporting table',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "physics",
+  "extractedQuestionText": "某同学利用图示电路测量小灯泡的电功率，实验中保持电源电压不变。表1记录了电压和电流的对应数据。根据表1中的数据，求小灯泡在电压为2.5伏时的电功率。",
+  "normalizedQuestionText": "某同学利用图示电路测量小灯泡的电功率，实验中保持电源电压不变。\n\n表1：\n| 电压/\\(\\mathrm{V}\\) | 电流/\\(\\mathrm{A}\\) |\n|---|---|\n| \\(2.0\\) | \\(0.20\\) |\n| \\(2.5\\) | \\(0.24\\) |\n| \\(3.0\\) | \\(0.28\\) |\n\n根据表1中的数据，求小灯泡在电压为 \\(2.5\\,\\mathrm{V}\\) 时的电功率。"
+}
+''';
+
+    final extraction = service.parseExtractionResultForTest(raw);
+
+    expect(extraction.subject, Subject.physics);
+    expect(extraction.splitResult?.strategy, QuestionSplitStrategy.fallback);
+    expect(extraction.splitResult?.candidates, hasLength(1));
+    expect(extraction.splitResult?.candidates.single.text, contains('表1'));
+    expect(extraction.splitResult?.candidates.single.text, contains('电功率'));
+  });
+
+  test('service still splits extracted independent math questions', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "数学",
+  "extractedQuestionText": "1. 已知 \(x^{2}+1=5\)，求 \(x\) 的值\n2. 若 \(\frac{a}{b}=2\) 且 \(a+b=9\)，求 \(a,b\)\n3. 函数 \(f(x)=x^{2}-2x+1\) 在 \(x=3\) 时的值是？\n4. 解方程组 \(\begin{cases} x+y=5 \\ x-y=1 \end{cases}\)\n5. 圆锥体积 \(V=\frac{1}{3}\pi r^{2}h\)，当 \(r=3,h=4\) 时求 \(V\)\n6. 在 \(\triangle ABC\) 中，若 \(AB=AC\)，且 \(\angle A=40^\circ\)，求 \(\angle B\)",
+  "normalizedQuestionText": "1. 已知 \(x^{2}+1=5\)，求 \(x\) 的值。\n\n2. 若 \(\frac{a}{b}=2\)，且 \(a+b=9\)，求 \(a\) 和 \(b\) 的值。\n\n3. 函数 \(f(x)=x^{2}-2x+1\) 在 \(x=3\) 时的值是多少？\n\n4. 解方程组：\[\begin{cases} x+y=5 \\ x-y=1 \end{cases}\]\n\n5. 圆锥体积公式为 \(V=\frac{1}{3}\pi r^{2}h\)。当 \(r=3\)，\(h=4\) 时，求 \(V\)。\n\n6. 在 \(\triangle ABC\) 中，若 \(AB=AC\)，且 \(\angle A=40^\circ\)，求 \(\angle B\)。"
+}
+''';
+
+    final extraction = service.parseExtractionResultForTest(raw);
+
+    expect(extraction.subject, Subject.math);
+    expect(extraction.splitResult?.strategy, QuestionSplitStrategy.numbered);
+    expect(extraction.splitResult?.candidates, hasLength(6));
+    expect(extraction.splitResult?.candidates.first.text, startsWith('1.'));
+    expect(extraction.splitResult?.candidates.last.text, startsWith('6.'));
+  });
+
+  test('service restores double-escaped numbered question line breaks', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "math",
+  "extractedQuestionText": "1. 已知 x+1=3，求 x。\\n2. 已知 y-2=0，求 y。\\n3. 已知 z=5，求 z+1。",
+  "normalizedQuestionText": "1. 已知 x+1=3，求 x。\\n2. 已知 y-2=0，求 y。\\n3. 已知 z=5，求 z+1。"
+}
+''';
+
+    final extraction = service.parseExtractionResultForTest(raw);
+
+    expect(extraction.subject, Subject.math);
+    expect(extraction.normalizedQuestionText, isNot(contains(r'\n2.')));
+    expect(extraction.splitResult?.strategy, QuestionSplitStrategy.numbered);
+    expect(extraction.splitResult?.candidates, hasLength(3));
+    expect(extraction.splitResult?.candidates.last.text, startsWith('3.'));
+  });
+
+  test(
+      'service preserves latex commands while restoring escaped question breaks',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "math",
+  "extractedQuestionText": "1. 已知 \\(x\\neq 0\\)，求 x。\\n2. 已知 y=2，求 y+1。",
+  "normalizedQuestionText": "1. 已知 \\(x\\neq 0\\)，求 x。\\n2. 已知 y=2，求 y+1。"
+}
+''';
+
+    final extraction = service.parseExtractionResultForTest(raw);
+
+    expect(extraction.normalizedQuestionText, contains(r'\neq'));
+    expect(extraction.normalizedQuestionText, isNot(contains(r'\n2.')));
+    expect(extraction.splitResult?.strategy, QuestionSplitStrategy.numbered);
+    expect(extraction.splitResult?.candidates, hasLength(2));
   });
 
   test('service parses extraction json with raw latex backslashes', () {
@@ -755,9 +1826,9 @@ void main() {
 {
   "subject": "数学",
   "finalAnswer": "第一行\n第二行，公式 \frac{1}{2}",
-  "steps": ["使用公式 \times 2", "保留换行\n继续"],
-  "aiTags": ["几何"],
-  "knowledgePoints": ["角度与分式"],
+  "steps": ["先移项，使用公式 \times 2", "保留换行\n继续"],
+  "aiTags": ["一元一次方程"],
+  "knowledgePoints": ["解方程"],
   "mistakeReason": "漏看 \angle 标记",
   "studyAdvice": "规范书写"
 }
@@ -766,7 +1837,7 @@ void main() {
     final exercises = service.extractGeneratedExercisesFromContent(raw,
         questionId: 'q-latex');
 
-    expect(exercises.length, 3);
+    expect(exercises, isEmpty);
   });
 
   test('service repairs raw latex without corrupting escaped delimiters', () {
@@ -802,7 +1873,40 @@ void main() {
     expect(analysis.visualAssumptions?.measurements.single.label, '10');
   });
 
-  test('service falls back to default exercises when raw json has none', () {
+  test('service parses analysis json after model preface text', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+我会基于已确认文本还原合成路线；图片细节缺失的地方会在 `visualAssumptions` 中标明依据与不确定性。
+{
+  "subject": "化学",
+  "reconstructedQuestionText": "某治疗胃溃疡的药物中间体 N，可通过合成路线制得。",
+  "visualAssumptions": {
+    "targetObject": "有机合成路线",
+    "targetQuestion": "回答反应类型、官能团分类、结构简式等",
+    "measurements": [],
+    "solutionBasis": ["根据题干文字和路线条件分析"],
+    "uncertainItems": ["部分结构式需核对原图"],
+    "needsManualReview": true,
+    "reviewReason": "模型返回基于文本的可能解法"
+  },
+  "finalAnswer": "A→B 为取代反应。",
+  "finalAnswerDerivation": "苯环在 Cl2/FeCl3 条件下发生亲电取代。",
+  "steps": ["识别 A→B 条件为 Cl2/FeCl3。", "判断为芳香环取代反应。"],
+  "aiTags": ["有机合成", "取代反应"],
+  "knowledgePoints": ["苯环卤代反应属于亲电取代。"],
+  "mistakeReason": "容易误判为加成反应。",
+  "studyAdvice": "先按反应条件识别反应类型。"
+}
+''';
+
+    final analysis = service.parseAnalysisResponseForTest(raw);
+
+    expect(analysis.subject, Subject.chemistry);
+    expect(analysis.finalAnswer, 'A→B 为取代反应。');
+    expect(analysis.visualAssumptionStatus, VisualAssumptionStatus.needsReview);
+  });
+
+  test('service does not backfill linear equation when raw json has none', () {
     final service = AiAnalysisService.fake();
     const raw = '''
 {
@@ -819,9 +1923,7 @@ void main() {
     final exercises =
         service.extractGeneratedExercisesFromContent(raw, questionId: 'q-2');
 
-    expect(exercises.length, 3);
-    expect(exercises.first.questionId, 'q-2');
-    expect(exercises.first.generationMode.name, 'practice');
+    expect(exercises, isEmpty);
   });
 
   test('service normalizes double backslashes in generated exercise content',
@@ -862,6 +1964,42 @@ void main() {
       r'D. \(4\)',
     ]);
   });
+
+  test('service normalizes organic synthesis xrightarrow exercise content', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "化学",
+  "finalAnswer": "D",
+  "steps": ["识别反应条件"],
+  "aiTags": ["有机合成"],
+  "knowledgePoints": ["反应条件"],
+  "mistakeReason": "箭头条件易漏读",
+  "studyAdvice": "整理反应路线",
+  "generatedExercises": [
+    {
+      "id": "chem-arrow",
+      "difficulty": "同级",
+      "question": "某合成路线为：对甲氧基乙酰苯胺 xrightarrowa, Δ X xrightarrowNaOH, Δ 4-甲氧基-2-硝基苯胺。",
+      "options": ["A. a 为 NH_2OH/HCl", "B. a 为浓硝酸和浓硫酸", "C. a 为 Pd/HCl", "D. a 为 (CH_3CO)_2O"],
+      "answer": "D",
+      "explanation": "路线可写作 \\(A\\xrightarrow{NaOH,\\Delta}B\\)。"
+    }
+  ]
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(raw,
+        questionId: 'q-chem-arrow');
+
+    final exercise =
+        exercises.firstWhere((exercise) => exercise.id == 'chem-arrow');
+    expect(exercise.question, contains(r'\xrightarrow{a, \Delta}'));
+    expect(exercise.question, contains(r'\xrightarrow{NaOH, \Delta}'));
+    expect(exercise.question, isNot(contains('xrightarrowa')));
+    expect(exercise.explanation, contains(r'\xrightarrow{NaOH,\Delta}'));
+  });
+
   test('service extracts generated exercises from raw ai json', () {
     final service = AiAnalysisService.fake();
     const raw = '''
@@ -896,7 +2034,196 @@ void main() {
     expect(exercises.first.options, ['A. 1', 'B. 2', 'C. 3', 'D. 4']);
   });
 
-  test('analysis prompt anchors right triangle length exercises', () {
+  test('service preserves organic chemistry generated exercises', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "化学",
+  "reconstructedQuestionText": "某有机合成路线中，苯酚与乙酸酐生成乙酸苯酯，乙酸苯酯经 Fries 重排生成对羟基苯乙酮；对羟基苯乙酮与 NH2OH 反应生成肟。题目还要求根据银镜反应和核磁氢谱筛选同分异构体。",
+  "finalAnswer": "（1）取代反应；（2）酚类；（3）E 为乙酸苯酯。",
+  "finalAnswerDerivation": "根据苯酚乙酰化、Fries 重排、羟胺成肟和同分异构体筛选规律作答。",
+  "steps": [
+    "苯酚与乙酸酐反应生成乙酸苯酯。",
+    "乙酸苯酯经 Fries 重排可生成对羟基苯乙酮。",
+    "羰基化合物与 NH2OH 加成后脱水形成肟。"
+  ],
+  "aiTags": ["有机合成", "同分异构", "官能团", "反应类型"],
+  "knowledgePoints": ["Fries 重排", "银镜反应", "羟胺成肟", "酰胺水解"],
+  "mistakeReason": "容易把结构式与分子式读错。",
+  "studyAdvice": "按官能团转化梳理有机合成路线。",
+  "generatedExercises": [
+    {
+      "id": "chem1",
+      "difficulty": "简单",
+      "question": "苯酚与乙酸酐反应生成有机物 X，X 经 Fries 重排可生成邻羟基苯乙酮和对羟基苯乙酮。X 的结构简式最可能是",
+      "options": ["A. \\(\\mathrm{C_6H_5OCOCH_3}\\)", "B. \\(\\mathrm{C_6H_5COOCH_3}\\)", "C. \\(\\mathrm{C_6H_5CH_2OH}\\)", "D. \\(\\mathrm{C_6H_5CHO}\\)"],
+      "answer": "A",
+      "explanation": "苯酚与乙酸酐发生酯化生成乙酸苯酯，结构为 \\(\\mathrm{C_6H_5OCOCH_3}\\)，其 Fries 重排可生成羟基苯乙酮。"
+    },
+    {
+      "id": "chem2",
+      "difficulty": "同级",
+      "question": "某化合物 Y 的分子式为 \\(\\mathrm{C_8H_8O_2}\\)，能发生银镜反应，且核磁共振氢谱有 4 组峰，峰面积比为 \\(1:2:2:3\\)。下列结构最符合的是",
+      "options": ["A. \\(\\mathrm{o{-}CH_3O{-}C_6H_4{-}CHO}\\)", "B. \\(\\mathrm{p{-}CH_3O{-}C_6H_4{-}CHO}\\)", "C. \\(\\mathrm{m{-}CH_3O{-}C_6H_4{-}CHO}\\)", "D. \\(\\mathrm{C_6H_5COOCH_3}\\)"],
+      "answer": "B",
+      "explanation": "对甲氧基苯甲醛含醛基，能发生银镜反应；对位二取代使苯环氢有两组各 2H，加上醛基 H 和甲氧基 H，共 4 组峰。"
+    },
+    {
+      "id": "chem3",
+      "difficulty": "提高",
+      "question": "苯乙酮 \\(\\mathrm{C_6H_5COCH_3}\\) 与 \\(\\mathrm{NH_2OH}\\) 反应，先加成后脱水。脱水后主要产物的官能团结构应为",
+      "options": ["A. \\(\\mathrm{C_6H_5C(=N{-}OH)CH_3}\\)", "B. \\(\\mathrm{C_6H_5CH(OH)CH_3}\\)", "C. \\(\\mathrm{C_6H_5COONH_4}\\)", "D. \\(\\mathrm{C_6H_5NHCOCH_3}\\)"],
+      "answer": "A",
+      "explanation": "羰基化合物与羟胺反应先生成加成产物，再脱水形成肟，结构特征为 \\(\\mathrm{C=N{-}OH}\\)。"
+    }
+  ]
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'huaxue',
+      sourceQuestionText: '请识别图片中的高二化学有机合成综合题，保持为一道大题处理，并生成同题型举一反三练习。',
+    );
+
+    expect(exercises.length, 3);
+    expect(exercises.map((exercise) => exercise.id),
+        <String>['chem1', 'chem2', 'chem3']);
+    final exerciseText =
+        exercises.map((exercise) => exercise.question).join(' ');
+    expect(exerciseText, contains('Fries'));
+    expect(exerciseText, contains('银镜'));
+    expect(exerciseText, contains('NH_2OH'));
+    expect(exerciseText, isNot(contains('x+1=4')));
+  });
+
+  test('analysis prompt analyzes organic chemistry without exercise anchors',
+      () {
+    final service = AiAnalysisService.fake();
+
+    final prompt = service.buildAnalysisPromptForTest(
+      '高二化学有机合成综合题：苯酚与乙酸酐生成乙酸苯酯，乙酸苯酯经 Fries 重排生成对羟基苯乙酮；结合银镜反应和核磁氢谱判断同分异构体。',
+      'chemistry',
+    );
+
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('举一反三锚点')));
+    expect(prompt, isNot(contains('domain=chemistryOrganicSynthesis')));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
+  });
+
+  test('analysis prompt defers exercises for long organic chemistry text', () {
+    final service = AiAnalysisService.fake();
+
+    final prompt = service.buildAnalysisPromptForTest(
+      '某治疗胃溃疡的药物中间体 N，可通过图示有机合成路线制得。A 在 Cl2/FeCl3 条件下生成 B；B 经 NaOH、H+ 生成 D；D 与乙酸酐反应生成 E；E 经 HNO3/H2SO4 反应生成含酚羟基和乙酰基的芳香化合物 F。请回答反应类型、官能团分类、结构简式、同分异构体、P/Q 结构、试剂 a 和水解方程式。',
+      'chemistry',
+    );
+
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('举一反三锚点')));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
+    expect(prompt, isNot(contains('exerciseAnchor、generatedExercises 字段')));
+  });
+
+  test('analysis prompt defers exercises for long math proof text', () {
+    final service = AiAnalysisService.fake();
+
+    final prompt = service.buildAnalysisPromptForTest(
+      r'19.（17分）已知函数 \(f(x)\) 的定义域为 \(\mathbb{R}\)，且当 \(x<0\) 时，\(f(x)=2^x\)。对任意 \(x_0\in\mathbb{R}\)，定义集合 \(D(x_0)=\{d\in\mathbb{R}\mid f(x_0+d)>f(x_0)\}\)。（1）若当 \(x\geq 0\) 时，\(f(x)=1-x\)，求 \(D(-1)\)；（2）若 \(f(x)\) 是奇函数，且 \(f(x_1)\leq f(x_2)\)，\(x_1x_2\neq0\)，证明：\(D(x_2)\subseteq D(x_1)\)；（3）设 \(f(x)\) 满足：① 若 \(f(x_1)\leq f(x_2)\)，则 \(D(x_2)\subseteq D(x_1)\)；② 当 \(0<x<1\) 时，\(f(x)<f(0)\)。证明：（i）\(f(0)\geq1\)；（ii）\(f(x)\) 在区间 \((0,+\infty)\) 上单调递增。',
+      'math',
+    );
+
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('举一反三锚点')));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
+    expect(prompt, isNot(contains('exerciseAnchor、generatedExercises 字段')));
+  });
+
+  test('analysis prompt defers exercises for long Chinese worksheet text', () {
+    final service = AiAnalysisService.fake();
+
+    final prompt = service.buildAnalysisPromptForTest(
+      '《桃花源记》翻译卷：一、文常积累：本文作者____，名____，字____，自号____，____朝代文学家，有“田园诗人”之称。二、字词释义：根据原文解释“缘、鲜美、落英、缤纷、甚、异、欲穷其林、林尽水源、仿佛、才通人、豁然开朗、俨然、属、交通、阡陌、相闻、悉、黄发、垂髫、乃、具、要、咸、妻子、绝境、遂、间隔、无论、为、叹惋、延、语云、不足、扶、向、志、及、诣、规、未果、寻、问津”等。',
+      'chinese',
+    );
+
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('举一反三锚点')));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
+    expect(prompt, isNot(contains('exerciseAnchor、generatedExercises 字段')));
+  });
+
+  test('analysis prompt defers exercises for long English cloze worksheet text',
+      () {
+    final service = AiAnalysisService.fake();
+
+    final prompt = service.buildAnalysisPromptForTest(
+      '阅读短文《Saving for a Rainy Day》，根据上下文和语法从每题 A/B/C 选项中选择最佳答案。In China, saving money has always been considered a traditional virtue. For thousands of years, Chinese people ____1____ the habit of putting money aside. She told me that the money ____2____ for rainy days. They are ____3____ in buying financial products online. While some save 50% of their income, ____4____ spend most of it on travel and hobbies. It is important ____5____ a balance. We should ask ourselves ____6____ money means to us. A recent survey shows that 70% of Chinese families still ____7____ high savings. The habit, ____8____ was passed down from ancestors, is still valuable. No matter ____9____ rich you are, never waste a penny. After all, ____10____ thrifty is part of our culture.',
+      'english',
+    );
+
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('举一反三锚点')));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
+    expect(prompt, isNot(contains('exerciseAnchor、generatedExercises 字段')));
+  });
+
+  test('analysis prompt defers exercises for short English text', () {
+    final service = AiAnalysisService.fake();
+
+    final prompt = service.buildAnalysisPromptForTest(
+      'Choose the best answer: For many years, my parents ____ the habit of reading before bed. A. keep B. kept C. have kept D. are keeping',
+      'english',
+    );
+
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('举一反三锚点')));
+    expect(prompt, isNot(contains('generatedExercises 必须恰好 3 道')));
+    expect(prompt, isNot(contains('exerciseAnchor、generatedExercises 字段')));
+  });
+
+  test('service falls back to organic chemistry exercises for organic source',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "化学",
+  "reconstructedQuestionText": "有机合成路线：苯酚与乙酸酐反应，经 Fries 重排生成对羟基苯乙酮。",
+  "finalAnswer": "E 为乙酸苯酯。",
+  "steps": ["苯酚与乙酸酐生成乙酸苯酯。", "乙酸苯酯经 Fries 重排生成羟基苯乙酮。"],
+  "aiTags": ["有机合成", "官能团"],
+  "knowledgePoints": ["Fries 重排", "酯化反应"],
+  "mistakeReason": "易混淆酯的连接方式。",
+  "studyAdvice": "按官能团转化整理路线。",
+  "generatedExercises": []
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'chem-fallback',
+      sourceQuestionText: '化学有机合成题：苯酚与乙酸酐反应，经 Fries 重排生成羟基苯乙酮。',
+    );
+
+    expect(exercises.length, 3);
+    final exerciseText =
+        exercises.map((exercise) => exercise.question).join(' ');
+    expect(exerciseText, contains('Fries'));
+    expect(exerciseText, contains('银镜'));
+    expect(exerciseText, isNot(contains('x+1=4')));
+    expect(exerciseText, isNot(contains('求 x 的值')));
+  });
+
+  test(
+      'graphical analysis prompt stays analysis-only for right triangle length',
+      () {
     final service = AiAnalysisService.fake();
 
     final prompt = service.buildAnalysisPromptForTest(
@@ -905,11 +2232,11 @@ void main() {
       isGraphicalQuestion: true,
     );
 
-    expect(prompt, contains('domain=planeGeometryLength'));
-    expect(prompt, contains('object=rightTriangle'));
-    expect(prompt, contains('pythagorean'));
-    expect(prompt, contains('简单、同级、提高'));
-    expect(prompt, contains('同一知识点、同一题型、同一核心解法'));
+    expect(prompt, contains('图形/示意图题分析要求'));
+    expect(prompt, contains('解析优先模式'));
+    expect(prompt, contains('本次只做解析'));
+    expect(prompt, isNot(contains('domain=planeGeometryLength')));
+    expect(prompt, isNot(contains('简单、同级、提高')));
   });
 
   test('service preserves square perpendicular bisector length exercises', () {
@@ -982,6 +2309,179 @@ void main() {
         <String>['简单', '同级', '提高']);
   });
 
+  test('service does not backfill unrecognized language analysis with algebra',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = '''
+{
+  "subject": "英语",
+  "reconstructedQuestionText": "题目要求识别图片中的英语题并分析作答思路，但当前未提供可识别的图片内容或具体英语题干，因此无法整理完整题干。",
+  "visualAssumptions": {
+    "targetObject": "未知英语题目",
+    "targetQuestion": "识别图片中的英语题并解答",
+    "measurements": [],
+    "solutionBasis": ["用户文字说明中仅包含任务要求，未包含具体英语题干、选项、图片内容或学生作答信息。"],
+    "uncertainItems": ["图片中的题干内容", "题目题型", "选项内容"],
+    "needsManualReview": true,
+    "reviewReason": "缺少图片或具体题目文本，无法准确识别题目并判断答案。"
+  },
+  "finalAnswer": "无法确定",
+  "finalAnswerDerivation": "由于未提供图片内容或具体英语题干，无法推出题目最终答案。",
+  "steps": ["没有具体英语题目内容。", "最终结论：无法确定。"],
+  "aiTags": ["英语", "题干缺失"],
+  "knowledgePoints": ["英语错题分析需要至少包含题干、选项或图片内容。"],
+  "mistakeReason": "当前无法分析学生错误原因，因为缺少原题内容和学生作答信息。",
+  "studyAdvice": "请补充上传题目图片，或直接输入完整英文题干、选项和你的原答案。",
+  "generatedExercises": []
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'q-unrecognized-english',
+      sourceQuestionText: '请识别图片中的英语题，整理完整题干并分析作答思路，生成同题型举一反三练习。',
+    );
+
+    expect(exercises, isEmpty);
+  });
+
+  test('service does not backfill physics circuit analysis with algebra', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "物理",
+  "reconstructedQuestionText": "如图所示电路中，电源电压保持不变，电阻 R1、R2 串联或并联接入电路。根据电流表示数、电压表示数和电阻变化判断电路规律。",
+  "finalAnswer": "根据欧姆定律和串并联电路规律判断。",
+  "finalAnswerDerivation": "先识别电路连接方式，再用 \(I=\frac{U}{R}\) 与串并联规律分析电表变化。",
+  "steps": [
+    "判断电路中电阻的连接方式。",
+    "结合欧姆定律 \(I=\frac{U}{R}\) 分析电流和电压变化。",
+    "排除与电路规律矛盾的选项。"
+  ],
+  "aiTags": ["电路", "欧姆定律", "串并联电路", "电表示数"],
+  "knowledgePoints": ["欧姆定律", "串联电路电压规律", "并联电路电流规律"],
+  "mistakeReason": "容易把电压表和电流表测量对象判断错，或把串联、并联规律混用。",
+  "studyAdvice": "先标出电流路径和电表测量对象，再列出对应的欧姆定律关系。",
+  "generatedExercises": []
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'q-physics-circuit',
+      sourceQuestionText: '物理电学选择题：根据电路图、电阻、电压表和电流表示数变化判断正确选项。',
+    );
+
+    expect(exercises, isEmpty);
+  });
+
+  test('service rejects generated algebra drift for physics circuit source',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "物理",
+  "reconstructedQuestionText": "如图所示电路中，电源电压保持不变，闭合开关后根据电压表、电流表示数变化判断正确选项。",
+  "finalAnswer": "根据欧姆定律和串并联电路规律判断。",
+  "finalAnswerDerivation": "先识别电路连接方式，再用 \(I=\frac{U}{R}\) 与串并联规律分析电表变化。",
+  "steps": [
+    "判断电路中电阻的连接方式。",
+    "结合欧姆定律分析电流和电压变化。",
+    "排除与电路规律矛盾的选项。"
+  ],
+  "aiTags": ["电路", "欧姆定律", "串并联电路", "电表示数"],
+  "knowledgePoints": ["欧姆定律", "串联电路电压规律", "并联电路电流规律"],
+  "mistakeReason": "容易把电压表和电流表测量对象判断错。",
+  "studyAdvice": "先标出电流路径和电表测量对象。",
+  "generatedExercises": [
+    {"id": "bad1", "difficulty": "简单", "question": "x+1=4，求 x 的值", "options": ["A. 2", "B. 3", "C. 4", "D. 5"], "answer": "B", "explanation": "移项得 x=4-1=3"},
+    {"id": "bad2", "difficulty": "同级", "question": "2x=8，求 x 的值", "options": ["A. 2", "B. 3", "C. 4", "D. 6"], "answer": "C", "explanation": "两边同时除以 2 得 x=4"},
+    {"id": "bad3", "difficulty": "提高", "question": "3x+2=11，求 x 的值", "options": ["A. 2", "B. 3", "C. 4", "D. 5"], "answer": "B", "explanation": "先减 2 再除以 3 得 x=3"}
+  ]
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'q-physics-circuit-drift',
+      sourceQuestionText: '物理电学选择题：根据电路图、电阻、电压表和电流表示数变化判断正确选项。',
+    );
+
+    expect(exercises, isEmpty);
+  });
+
+  test('service preserves valid physics circuit generated exercises', () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "物理",
+  "reconstructedQuestionText": "如图所示电路中，电源电压保持不变，闭合开关后根据电压表、电流表示数变化判断正确选项。",
+  "finalAnswer": "根据欧姆定律和串并联电路规律判断。",
+  "finalAnswerDerivation": "先识别电路连接方式，再用 \(I=\frac{U}{R}\) 与串并联规律分析电表变化。",
+  "steps": ["判断电表测量对象。", "根据欧姆定律分析。"],
+  "aiTags": ["电路", "欧姆定律", "串并联电路"],
+  "knowledgePoints": ["欧姆定律", "串联电路", "并联电路"],
+  "mistakeReason": "容易看错电表测量对象。",
+  "studyAdvice": "先画出电流路径。",
+  "generatedExercises": [
+    {"id": "p1", "difficulty": "简单", "question": "某电阻两端电压为 6V，通过电流为 0.3A，根据欧姆定律求电阻大小。", "options": ["A. 20Ω", "B. 18Ω", "C. 2Ω", "D. 0.05Ω"], "answer": "A", "explanation": "由 \(R=\frac{U}{I}\)，得 \(R=\frac{6}{0.3}=20Ω\)。"},
+    {"id": "p2", "difficulty": "同级", "question": "两个电阻串联接入电路，总电压为 12V，电流为 0.5A，总电阻为多少？", "options": ["A. 6Ω", "B. 12Ω", "C. 24Ω", "D. 36Ω"], "answer": "C", "explanation": "串联电路电流处处相等，由 \(R=\frac{U}{I}\)，得总电阻为 24Ω。"},
+    {"id": "p3", "difficulty": "提高", "question": "并联电路中，支路电阻变小且电源电压不变，下列关于干路电流的判断正确的是", "options": ["A. 变大", "B. 变小", "C. 不变", "D. 先变大后变小"], "answer": "A", "explanation": "并联总电阻变小，电源电压不变，由 \(I=\frac{U}{R}\) 可知干路电流变大。"}
+  ]
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'q-physics-circuit-valid',
+      sourceQuestionText: '物理电学选择题：根据电路图、电阻、电压表和电流表示数变化判断正确选项。',
+    );
+
+    expect(exercises.length, 3);
+    expect(
+        exercises.map((exercise) => exercise.id), <String>['p1', 'p2', 'p3']);
+    expect(exercises.map((exercise) => exercise.question).join(' '),
+        contains('电路'));
+    expect(exercises.map((exercise) => exercise.question).join(' '),
+        isNot(contains('x+1=4')));
+  });
+
+  test('service drops placeholder exercises for unrecognized language source',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = '''
+{
+  "subject": "英语",
+  "reconstructedQuestionText": "当前未提供可识别的图片内容或具体英语题干，因此无法还原完整题目。",
+  "finalAnswer": "无法确定",
+  "finalAnswerDerivation": "由于未提供图片或具体英语题干，无法确定题目的最终答案。",
+  "steps": ["没有可识别的英语题目图片或文本。", "因此本题最终答案为：无法确定。"],
+  "aiTags": ["英语"],
+  "knowledgePoints": ["题干识别"],
+  "mistakeReason": "缺少原题内容。",
+  "studyAdvice": "需要重新识别图片。",
+  "generatedExercises": [
+    {
+      "id": "placeholder",
+      "difficulty": "简单",
+      "question": "因原题图片或文本缺失，以下为占位练习：Choose the correct sentence.",
+      "options": ["A. She go to school.", "B. She goes to school.", "C. She going to school.", "D. She gone to school."],
+      "answer": "B",
+      "explanation": "主语 She 是第三人称单数。"
+    }
+  ]
+}
+''';
+
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'q-placeholder-english',
+      sourceQuestionText: '请识别图片中的英语题，整理完整题干并分析作答思路，生成同题型举一反三练习。',
+    );
+
+    expect(exercises, isEmpty);
+  });
+
   test('service rejects linear drift for quadratic root source and falls back',
       () {
     final service = AiAnalysisService.fake();
@@ -1047,6 +2547,47 @@ void main() {
     expect(exercises.first.question, contains(r'f('));
     expect(exercises.map((exercise) => exercise.question).join(' '),
         isNot(contains('x^2=9')));
+  });
+
+  test(
+      'service does not backfill advanced proof needs-review result with function value exercises',
+      () {
+    final service = AiAnalysisService.fake();
+    const raw = r'''
+{
+  "subject": "数学",
+  "reconstructedQuestionText": "已知函数 \(f(x)\) 的定义域为 \(\mathbb{R}\)，定义 \(D(x_0)=\{d\in\mathbb{R}\mid f(x_0+d)>f(x_0)\}\)。证明 \(D(x_2)\subseteq D(x_1)\)，并证明 \(f(x)\) 在 \((0,+\infty)\) 单调递增。",
+  "visualAssumptions": {
+    "needsManualReview": true,
+    "reviewReason": "第（3）（ii）为抽象函数证明，紧凑输出只保留关键思路，完整严谨性建议结合原题标准答案核对。"
+  },
+  "finalAnswer": "（1）\(D(-1)=(0,\frac{3}{2})\)；（2）\(D(x_2)\subseteq D(x_1)\)；（3）\(f(0)\geq1\)，且 \(f(x)\) 在 \((0,+\infty)\) 单调递增。",
+  "finalAnswerDerivation": "由分段函数直接比较得（1），由奇函数确定正负半轴表达式并分类比较得（2），由条件①的集合包含关系结合条件②反证推出（3）的两个结论。",
+  "steps": [
+    "（1）令 \(y=-1+d\)，分段比较得到 \(0<d<\frac32\)。",
+    "（2）利用奇函数确定正半轴表达式后分类证明集合包含。",
+    "（3）抽象函数证明只保留关键思路，需要人工复核严谨性。"
+  ],
+  "aiTags": ["函数", "集合包含", "单调性", "反证法"],
+  "knowledgePoints": ["集合 \(D(x_0)\)", "抽象函数", "单调性证明"],
+  "mistakeReason": "容易把 \(D(x_0)\) 误解为函数值域或定义域。",
+  "studyAdvice": "遇到抽象函数证明时，先明确集合定义，再构造增量。",
+  "consistencyStatus": "needsReview",
+  "consistencyNote": "第（3）（ii）为抽象函数证明，紧凑输出只保留关键思路，完整严谨性建议结合原题标准答案核对。",
+  "generatedExercises": []
+}
+''';
+
+    final analysis = service.parseAnalysisResponseForTest(raw);
+    final exercises = service.extractGeneratedExercisesFromContent(
+      raw,
+      questionId: 'q-advanced-proof',
+      analysis: analysis,
+      sourceQuestionText:
+          r'已知函数 \(f(x)\) 的定义域为 \(\mathbb{R}\)，定义 \(D(x_0)=\{d\in\mathbb{R}\mid f(x_0+d)>f(x_0)\}\)。证明 \(D(x_2)\subseteq D(x_1)\)，并证明 \(f(x)\) 在区间 \((0,+\infty)\) 单调递增。',
+    );
+
+    expect(exercises, isEmpty);
   });
 
   test('service falls back to volume exercises for cone volume source', () {

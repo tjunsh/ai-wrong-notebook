@@ -236,7 +236,15 @@ class _QuestionSaveConfirmationScreenState
                   final messenger = ScaffoldMessenger.of(context);
                   final router = GoRouter.of(context);
                   await ref.read(questionRepositoryProvider).saveDraft(updated);
+                  try {
+                    await ref
+                        .read(scanTaskLifecycleServiceProvider)
+                        .completeSaved(updated.id);
+                  } catch (_) {
+                    // The saved notebook record remains authoritative.
+                  }
                   invalidateQuestionList(ref);
+                  ref.invalidate(scanTaskCountProvider);
                   ref.read(currentQuestionProvider.notifier).state = null;
                   if (!mounted) return;
                   messenger.showSnackBar(

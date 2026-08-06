@@ -53,6 +53,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
     final questionsAsync = ref.watch(filteredQuestionListProvider);
     final selectedSubject = ref.watch(selectedSubjectFilterProvider);
     final selectedMastery = ref.watch(selectedMasteryFilterProvider);
+    final selectedCreatedToday = ref.watch(selectedCreatedTodayFilterProvider);
     final selectedKnowledgePoint =
         ref.watch(selectedKnowledgePointFilterProvider);
 
@@ -122,6 +123,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                   label: '全部',
                   selected: selectedSubject == null &&
                       selectedMastery == null &&
+                      !selectedCreatedToday &&
                       selectedKnowledgePoint == null,
                   onTap: () {
                     ref.read(selectedSubjectFilterProvider.notifier).state =
@@ -129,12 +131,38 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                     ref.read(selectedMasteryFilterProvider.notifier).state =
                         null;
                     ref
+                        .read(selectedCreatedTodayFilterProvider.notifier)
+                        .state = false;
+                    ref
                         .read(selectedKnowledgePointFilterProvider.notifier)
                         .state = null;
                   },
                 ),
                 const SizedBox(width: 8),
-                ...Subject.values.map((s) => Padding(
+                if (selectedCreatedToday) ...<Widget>[
+                  _Chip(
+                    label: '今日新增',
+                    selected: true,
+                    onTap: () {
+                      ref
+                          .read(selectedCreatedTodayFilterProvider.notifier)
+                          .state = false;
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (selectedMastery != null) ...<Widget>[
+                  _Chip(
+                    label: _masteryFilterLabel(selectedMastery),
+                    selected: true,
+                    onTap: () {
+                      ref.read(selectedMasteryFilterProvider.notifier).state =
+                          null;
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                ...Subject.selectableValues.map((s) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: _Chip(
                         label: s.label,
@@ -228,6 +256,14 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
       ),
     );
   }
+}
+
+String _masteryFilterLabel(MasteryLevel level) {
+  return switch (level) {
+    MasteryLevel.newQuestion => '新题',
+    MasteryLevel.reviewing => '复习中',
+    MasteryLevel.mastered => '已掌握',
+  };
 }
 
 class _Chip extends StatelessWidget {

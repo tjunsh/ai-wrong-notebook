@@ -17,3 +17,8 @@ pubspec.lock
 .idea/
 *.swp
 .DS_Store
+
+# Local tooling and transient diagnostics
+.vercel/
+codex-patches/
+flutter_*.log

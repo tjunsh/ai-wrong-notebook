@@ -7,7 +7,7 @@ import 'subject.dart';
 
 enum QuestionContentFormat { plain, latexMixed }
 
-enum CandidateAnalysisStatus { success, failed }
+enum CandidateAnalysisStatus { queued, running, success, failed }
 
 class CandidateAnalysisSnapshot {
   const CandidateAnalysisSnapshot({
@@ -230,7 +230,7 @@ class QuestionRecord {
       imagePath: json['imagePath'] as String? ?? '',
       subject: Subject.values.firstWhere(
         (s) => s.name == json['subject'],
-        orElse: () => Subject.math,
+        orElse: () => Subject.unknown,
       ),
       extractedQuestionText: extractedQuestionText,
       normalizedQuestionText: normalizedQuestionText,
@@ -346,6 +346,44 @@ class QuestionRecord {
   String get correctedText => normalizedQuestionText;
 
   List<String> get allTags => [...aiTags, ...customTags];
+
+  QuestionRecord createReanalysisDraft({required String correctedText}) {
+    final text = correctedText.trim();
+    if (text.isEmpty) {
+      throw ArgumentError.value(
+        correctedText,
+        'correctedText',
+        'Corrected question text must not be empty.',
+      );
+    }
+
+    return QuestionRecord(
+      id: id,
+      imagePath: imagePath,
+      subject: subject,
+      extractedQuestionText: text,
+      normalizedQuestionText: text,
+      contentFormat: contentFormat,
+      tags: tags,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+      lastReviewedAt: lastReviewedAt,
+      reviewCount: reviewCount,
+      isFavorite: isFavorite,
+      contentStatus: ContentStatus.processing,
+      masteryLevel: masteryLevel,
+      analysisResult: null,
+      savedExercises: const <GeneratedExercise>[],
+      aiTags: const <String>[],
+      aiKnowledgePoints: const <String>[],
+      customTags: customTags,
+      splitResult: null,
+      candidateAnalyses: const <CandidateAnalysisSnapshot>[],
+      parentQuestionId: parentQuestionId,
+      rootQuestionId: rootQuestionId,
+      splitOrder: splitOrder,
+    );
+  }
 
   QuestionRecord copyWith({
     String? extractedQuestionText,

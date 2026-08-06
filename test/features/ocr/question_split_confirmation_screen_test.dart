@@ -141,6 +141,22 @@ QuestionSplitSession _session({
   );
 }
 
+QuestionSplitSession _partialSession() {
+  return QuestionSplitSession(
+    source: _sourceRecord(),
+    strategy: QuestionSplitStrategy.numbered,
+    failedCandidateCount: 1,
+    drafts: <QuestionSplitDraft>[
+      QuestionSplitDraft(
+        id: 'd-1',
+        text: r'第一题：已知 \(x+1=3\)，求 \(x\)',
+        selected: true,
+        originalOrder: 1,
+      ),
+    ],
+  );
+}
+
 Future<void> _pumpScreen(
   WidgetTester tester,
   ProviderContainer container,
@@ -159,6 +175,42 @@ Future<void> _scrollToActions(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+      'partial result saves only successful questions after confirmation',
+      (tester) async {
+    final repository = InMemoryQuestionRepository();
+    final container = ProviderContainer(
+      overrides: [questionRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    container.read(currentQuestionSplitSessionProvider.notifier).state =
+        _partialSession();
+
+    final router = _router();
+    addTearDown(router.dispose);
+    await _pumpScreen(tester, container, router);
+
+    expect(find.text('可保存 1 题'), findsOneWidget);
+    expect(find.text('1 题未解析成功'), findsOneWidget);
+    await _scrollToActions(tester);
+    await tester.tap(find.text('保存已勾选题目 (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('保存已解析题目'), findsOneWidget);
+    expect(find.textContaining('另 1 道未解析成功的题不会保存'), findsOneWidget);
+
+    await tester.tap(find.text('返回处理'));
+    await tester.pumpAndSettle();
+    expect(await repository.listAll(), isEmpty);
+
+    await tester.tap(find.text('保存已勾选题目 (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('继续保存'));
+    await tester.pumpAndSettle();
+    final saved = await repository.listAll();
+    expect(saved, hasLength(1));
+    expect(saved.single.splitOrder, 1);
+  });
+
   testWidgets('split confirmation screen saves selected questions',
       (tester) async {
     final repository = InMemoryQuestionRepository();

@@ -18,6 +18,8 @@ enum _ExerciseDomain {
   equationSystem,
   functionEvaluation,
   proportionalRelation,
+  organicChemistry,
+  physicsCircuit,
   planeGeometryArea,
   planeGeometryAngle,
   planeGeometryLength,
@@ -31,12 +33,18 @@ enum _ExerciseObject {
   equationSystem,
   functionExpression,
   proportionalRelation,
+  organicSynthesis,
+  circuit,
   circleFamily,
   square,
   triangle,
   rightTriangle,
   coneCylinder,
 }
+
+final _escapedNumberedQuestionBreak = RegExp(
+  r'(?:(?:\\r)?\\n)+(?=\s*(?:第\s*)?\d+(?:[、．)]|\.(?!\d)))',
+);
 
 class _Point2 {
   const _Point2(this.x, this.y);
@@ -127,10 +135,51 @@ class AiQuestionExtractionResult {
     this.splitResult,
   });
 
+  factory AiQuestionExtractionResult.fromJson(Map<String, dynamic> json) {
+    final subjectName = json['subject'] as String?;
+    final splitResultJson = json['splitResult'];
+    Subject? subject;
+    for (final candidate in Subject.values) {
+      if (candidate.name == subjectName || candidate.label == subjectName) {
+        subject = candidate;
+        break;
+      }
+    }
+    return AiQuestionExtractionResult(
+      extractedQuestionText: json['extractedQuestionText'] as String? ?? '',
+      normalizedQuestionText: json['normalizedQuestionText'] as String? ?? '',
+      subject: subject,
+      splitResult: splitResultJson is Map
+          ? QuestionSplitResult.fromJson(
+              Map<String, dynamic>.from(splitResultJson),
+            )
+          : null,
+    );
+  }
+
   final String extractedQuestionText;
   final String normalizedQuestionText;
   final Subject? subject;
   final QuestionSplitResult? splitResult;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'extractedQuestionText': extractedQuestionText,
+      'normalizedQuestionText': normalizedQuestionText,
+      'subject': subject?.name,
+      'splitResult': splitResult?.toJson(),
+    };
+  }
+}
+
+class AiFollowUpMessage {
+  const AiFollowUpMessage({
+    required this.role,
+    required this.content,
+  });
+
+  final String role;
+  final String content;
 }
 
 class AiAnalysisService {
@@ -140,6 +189,8 @@ class AiAnalysisService {
 
   static const _maxRetries = 2; // 最多重试2次（总共3次请求）
   static const _baseDelayMs = 1000; // 基础延迟1秒
+  static const _connectionProbeImageBase64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
   /// 带重试的 POST 请求（指数退避）
   Future<Response<T>> _retryPost<T>(
@@ -147,22 +198,28 @@ class AiAnalysisService {
     String path, {
     required Map<String, dynamic> data,
     int attempt = 1,
+    Set<int> retryStatusCodes = const <int>{},
   }) async {
     try {
       return await dio.post<T>(path, data: data);
     } on DioException catch (e) {
-      // 只对网络错误和超时进行重试，不重试 HTTP 错误（如401、403）
-      final shouldRetry = e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.connectionError;
+      final shouldRetry = _shouldRetryPost(
+        e,
+        retryStatusCodes: retryStatusCodes,
+      );
 
       if (shouldRetry && attempt <= _maxRetries) {
         final delayMs = _baseDelayMs * attempt;
         debugPrint(
             '[AiAnalysisService] 请求失败，${delayMs}ms 后重试 (第 $attempt 次)...');
         await Future.delayed(Duration(milliseconds: delayMs));
-        return _retryPost(dio, path, data: data, attempt: attempt + 1);
+        return _retryPost(
+          dio,
+          path,
+          data: data,
+          attempt: attempt + 1,
+          retryStatusCodes: retryStatusCodes,
+        );
       }
       rethrow;
     }
@@ -175,17 +232,47 @@ class AiAnalysisService {
   String _extractContentFromResponse(Response response) {
     dynamic data = response.data;
     if (data is String) {
-      data = jsonDecode(data);
+      final trimmed = data.trim();
+      if (trimmed.startsWith('data:')) {
+        return _extractContentFromSse(trimmed);
+      }
+      data = jsonDecode(trimmed);
     }
     return (data as Map<String, dynamic>)['choices'][0]['message']['content']
         as String;
   }
 
+  String _extractContentFromSse(String body) {
+    final buffer = StringBuffer();
+    for (final line in const LineSplitter().convert(body)) {
+      final trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      final payload = trimmed.substring(5).trim();
+      if (payload.isEmpty || payload == '[DONE]') continue;
+      final json = jsonDecode(payload) as Map<String, dynamic>;
+      final choices = json['choices'] as List? ?? const [];
+      if (choices.isEmpty || choices.first is! Map) continue;
+      final choice = choices.first as Map;
+      final delta = choice['delta'];
+      final message = choice['message'];
+      final content = delta is Map
+          ? delta['content']
+          : message is Map
+              ? message['content']
+              : null;
+      if (content is String) buffer.write(content);
+    }
+    final content = buffer.toString();
+    if (content.isEmpty) {
+      throw const FormatException('Empty SSE chat completion content.');
+    }
+    return content;
+  }
+
   Dio _createClient(AiProviderConfig config) {
+    final baseUrl = config.effectiveBaseUrl;
     return Dio(BaseOptions(
-      baseUrl: config.baseUrl.endsWith('/')
-          ? config.baseUrl.substring(0, config.baseUrl.length - 1)
-          : config.baseUrl,
+      baseUrl: baseUrl,
       headers: <String, String>{
         'Content-Type': 'application/json',
         if (config.apiKey.isNotEmpty)
@@ -196,14 +283,54 @@ class AiAnalysisService {
     ));
   }
 
-  /// 测试 API 连接
+  /// Returns the model ids that this API key can access through the standard
+  /// OpenAI-compatible endpoint. A successful request does not imply that
+  /// every returned model accepts images.
+  Future<List<String>> fetchAvailableModels(AiProviderConfig config) async {
+    if (config.baseUrl.trim().isEmpty || config.apiKey.trim().isEmpty) {
+      throw AiAnalysisException('请先选择服务商并填写 API Key');
+    }
+
+    try {
+      final response = await _createClient(config).get<dynamic>('/models');
+      final payload = response.data is String
+          ? jsonDecode(response.data as String)
+          : response.data;
+      final data = payload is Map ? payload['data'] : null;
+      if (data is! List) {
+        throw const FormatException('模型列表格式无效');
+      }
+
+      final modelIds = <String>{};
+      for (final entry in data) {
+        final id = entry is Map ? entry['id'] : entry;
+        if (id is String && id.trim().isNotEmpty) {
+          modelIds.add(id.trim());
+        }
+      }
+      if (modelIds.isEmpty) {
+        throw const FormatException('当前 Key 没有可用模型');
+      }
+      final models = modelIds.toList()..sort();
+      return models;
+    } on DioException catch (e) {
+      throw AiAnalysisException(_dioErrorMessage(e));
+    } on AiAnalysisException {
+      rethrow;
+    } catch (e) {
+      throw AiAnalysisException('获取模型列表失败：$e');
+    }
+  }
+
+  /// Tests the selected model with a tiny image request, rather than a text
+  /// ping, so the setup flow catches text-only models before scan time.
   Future<void> testConnection(AiProviderConfig config) async {
     debugPrint('[AiAnalysisService] testConnection called');
     debugPrint('[AiAnalysisService] baseUrl: ${config.baseUrl}');
     debugPrint('[AiAnalysisService] model: ${config.model}');
 
     final dio = _createClient(config);
-    final baseUrl = config.baseUrl.toLowerCase();
+    final baseUrl = config.effectiveBaseUrl.toLowerCase();
 
     try {
       // 只检查 HTTP 200 状态码，不检查返回内容
@@ -212,9 +339,12 @@ class AiAnalysisService {
         await dio.post('/chat/completions', data: <String, dynamic>{
           'model': config.model,
           'messages': [
-            {'role': 'user', 'content': 'Hi'},
+            {
+              'role': 'user',
+              'content': _visionProbeContent(),
+            },
           ],
-          'max_tokens': 1,
+          'max_tokens': 8,
         });
       } else if (config.model.toLowerCase().contains('gemini')) {
         debugPrint('[AiAnalysisService] Testing Gemini endpoint');
@@ -224,11 +354,17 @@ class AiAnalysisService {
             'contents': [
               {
                 'parts': [
-                  {'text': 'Hi'}
+                  {'text': '请确认你能接收图片。只回复 OK。'},
+                  {
+                    'inline_data': {
+                      'mime_type': 'image/png',
+                      'data': _connectionProbeImageBase64,
+                    },
+                  },
                 ]
               },
             ],
-            'generationConfig': {'maxOutputTokens': 1},
+            'generationConfig': {'maxOutputTokens': 8},
           },
         );
       } else {
@@ -236,9 +372,12 @@ class AiAnalysisService {
         await dio.post('/chat/completions', data: <String, dynamic>{
           'model': config.model,
           'messages': [
-            {'role': 'user', 'content': 'Hi'},
+            {
+              'role': 'user',
+              'content': _visionProbeContent(),
+            },
           ],
-          'max_tokens': 1,
+          'max_tokens': 8,
         });
       }
 
@@ -251,6 +390,22 @@ class AiAnalysisService {
       debugPrint('[AiAnalysisService] Exception: $e');
       throw AiAnalysisException('测试失败: $e');
     }
+  }
+
+  List<Map<String, dynamic>> _visionProbeContent() {
+    return <Map<String, dynamic>>[
+      <String, dynamic>{
+        'type': 'text',
+        'text': '请确认你能接收图片。只回复 OK。',
+      },
+      <String, dynamic>{
+        'type': 'image_url',
+        'image_url': <String, String>{
+          'url': 'data:image/png;base64,$_connectionProbeImageBase64',
+          'detail': 'low',
+        },
+      },
+    ];
   }
 
   /// 分析题目 - 图形题先直接读图解题，其他带图题保持先提取结构再分析。
@@ -363,40 +518,52 @@ class AiAnalysisService {
     final payloads = <CandidateAnalysisPayload>[];
 
     debugPrint(
-        '[AiAnalysisService] analyzeSplitCandidates: $total candidates, concurrency=2');
+        '[AiAnalysisService] analyzeSplitCandidates: $total candidates, serial');
 
-    for (var start = 0; start < candidates.length; start += 2) {
-      final batch = candidates.skip(start).take(2).map((candidate) async {
-        try {
-          final payload = await _analyzeSplitCandidateWithRetry(
-            questionId: questionId,
-            subjectName: subjectName,
-            candidate: candidate,
-            imagePath: imagePath,
-          );
-          completed++;
-          onProgress?.call(completed, total, failed: failed);
-          return payload;
-        } catch (e) {
-          debugPrint(
-              '[AiAnalysisService] candidate ${candidate.order} failed after retry: $e');
-          failed++;
-          completed++;
-          onProgress?.call(completed, total, failed: failed);
-          return CandidateAnalysisPayload.failed(
-            candidateId: candidate.id,
-            order: candidate.order,
-            questionText: candidate.text,
-            errorMessage: e.toString(),
-          );
-        }
-      }).toList();
-
-      payloads.addAll(await Future.wait(batch));
+    for (final candidate in candidates) {
+      try {
+        final payload = await _analyzeSplitCandidateWithRetry(
+          questionId: questionId,
+          subjectName: subjectName,
+          candidate: candidate,
+          imagePath: imagePath,
+        );
+        payloads.add(payload);
+      } catch (e) {
+        debugPrint(
+            '[AiAnalysisService] candidate ${candidate.order} failed after retry: $e');
+        failed++;
+        payloads.add(CandidateAnalysisPayload.failed(
+          candidateId: candidate.id,
+          order: candidate.order,
+          questionText: candidate.text,
+          errorMessage: e.toString(),
+        ));
+      } finally {
+        completed++;
+        onProgress?.call(completed, total, failed: failed);
+      }
     }
 
     payloads.sort((a, b) => a.order.compareTo(b.order));
     return payloads;
+  }
+
+  /// Re-analyzes exactly one already-extracted candidate. This deliberately
+  /// skips OCR and question splitting so a transient failure never redoes the
+  /// completed parts of a multi-question scan.
+  Future<CandidateAnalysisPayload> retrySplitCandidate({
+    required String questionId,
+    required String subjectName,
+    required QuestionSplitCandidate candidate,
+    String? imagePath,
+  }) {
+    return _analyzeSplitCandidateWithRetry(
+      questionId: questionId,
+      subjectName: subjectName,
+      candidate: candidate,
+      imagePath: imagePath,
+    );
   }
 
   Future<CandidateAnalysisPayload> _analyzeSplitCandidateWithRetry({
@@ -421,25 +588,13 @@ class AiAnalysisService {
           subjectName: subjectName,
           imagePath: candidateImagePath,
         );
-        final exercises = analysis is ParsedAnalysisResult
-            ? extractGeneratedExercisesFromContent(
-                analysis.rawContent,
-                questionId: '$questionId-${candidate.order}',
-                analysis: analysis,
-                sourceQuestionText: candidateText,
-              )
-            : extractGeneratedExercises(
-                analysis,
-                questionId: '$questionId-${candidate.order}',
-                sourceQuestionText: candidateText,
-              );
 
         return CandidateAnalysisPayload(
           candidateId: candidate.id,
           order: candidate.order,
           questionText: candidateText,
           analysisResult: analysis,
-          savedExercises: exercises,
+          savedExercises: const <GeneratedExercise>[],
           subject: analysis.subject,
           aiTags: analysis.aiTags,
           aiKnowledgePoints: analysis.knowledgePoints,
@@ -448,9 +603,15 @@ class AiAnalysisService {
         lastError = e;
         debugPrint(
             '[AiAnalysisService] candidate ${candidate.order} attempt $attempt failed: $e');
+        if (!_shouldRetrySplitCandidateFailure(e)) break;
       }
     }
     throw lastError ?? AiAnalysisException('解析失败');
+  }
+
+  bool _shouldRetrySplitCandidateFailure(Object error) {
+    return !RegExp(r'HTTP\s*524', caseSensitive: false)
+        .hasMatch(error.toString());
   }
 
   Future<AnalysisResult> analyzeExtractedQuestion({
@@ -478,11 +639,17 @@ class AiAnalysisService {
       isGraphicalQuestion: shouldAnalyzeImageFirst,
     );
     final systemPrompt = await _loadAnalysisSystemPrompt();
+    final isCompositeLanguageAnalysis =
+        _isCompositeLanguageAnalysis(correctedText, subjectName);
+    final shouldSendImageForAnalysis = shouldAnalyzeImageFirst ||
+        isCompositeLanguageAnalysis ||
+        _isInstructionOnlyImagePrompt(correctedText) ||
+        _shouldAnalyzeScienceImageFirst(correctedText, subjectName);
 
     try {
-      final isCompositeLanguageAnalysis =
-          _isCompositeLanguageAnalysis(correctedText, subjectName);
-      if (imagePath != null && File(imagePath).existsSync()) {
+      if (imagePath != null &&
+          shouldSendImageForAnalysis &&
+          File(imagePath).existsSync()) {
         final imageBytes = await File(imagePath).readAsBytes();
 
         final String imagePrompt;
@@ -516,6 +683,16 @@ class AiAnalysisService {
             imageBytes: imageBytes,
           );
         } on DioException catch (e) {
+          if (_shouldUseExtractedTextFallbackAfterImageFailure(
+              e, subjectName)) {
+            return _analyzeAfterImageFailureWithTextFallback(
+              config: config,
+              systemPrompt: systemPrompt,
+              correctedText: correctedText,
+              subjectName: subjectName,
+              imagePath: imagePath,
+            );
+          }
           if (!_shouldRetryWithCompactImage(e) ||
               !isCompositeLanguageAnalysis && !shouldAnalyzeImageFirst) {
             rethrow;
@@ -539,15 +716,43 @@ class AiAnalysisService {
             config: config,
             imageBytes: imageBytes,
           );
+        } on FormatException catch (e) {
+          if (_shouldUseExtractedTextFallbackAfterImageFormatFailure(
+            e,
+            subjectName,
+          )) {
+            return _analyzeAfterImageFailureWithTextFallback(
+              config: config,
+              systemPrompt: systemPrompt,
+              correctedText: correctedText,
+              subjectName: subjectName,
+              imagePath: imagePath,
+            );
+          }
+          rethrow;
         }
       }
 
-      final content = await _requestAiContent(
-        config: config,
-        systemPrompt: systemPrompt,
-        prompt: prompt,
-        maxTokens: isCompositeLanguageAnalysis ? 3000 : 2000,
-      );
+      String content;
+      try {
+        content = await _requestAiContent(
+          config: config,
+          systemPrompt: systemPrompt,
+          prompt: prompt,
+          maxTokens: isCompositeLanguageAnalysis ? 3000 : 2000,
+        );
+      } on DioException catch (e) {
+        if (!_shouldRetryTextAnalysisWithCompact(e)) rethrow;
+        debugPrint(
+            '[AiAnalysisService] Text analysis failed, retrying compact analysis: ${e.type}, status=${e.response?.statusCode}');
+        content = await _requestAiContent(
+          config: config,
+          systemPrompt: systemPrompt,
+          prompt: _buildCompactAnalysisPrompt(correctedText, subjectName),
+          maxTokens: 1800,
+          temperature: 0.2,
+        );
+      }
       final analysis = _parseAnalysisResponse(content);
       return _ensureAnalysisConsistency(
         analysis,
@@ -566,6 +771,93 @@ class AiAnalysisService {
         throw AiAnalysisException('AI 返回内容格式异常，请重试或换一张更清晰的图片');
       }
       throw AiAnalysisException('AI 解析失败: $e');
+    }
+  }
+
+  Future<List<GeneratedExercise>> generateExercisesForQuestion(
+    QuestionRecord question,
+  ) async {
+    final analysis = question.analysisResult;
+    final sourceQuestionText = question.normalizedQuestionText.trim().isNotEmpty
+        ? question.normalizedQuestionText.trim()
+        : question.extractedQuestionText.trim();
+
+    if (analysis == null) {
+      return _filterDuplicateGeneratedExercises(
+        _defaultGeneratedExercises(
+          question.id,
+          sourceQuestionText: sourceQuestionText,
+        ),
+        existingExercises: question.savedExercises,
+      );
+    }
+
+    final config = await _requireConfig();
+    final prompt = _buildExerciseGenerationPrompt(question);
+
+    try {
+      final content = await _requestAiContent(
+        config: config,
+        systemPrompt: _exerciseGenerationSystemPrompt,
+        prompt: prompt,
+        maxTokens: 1800,
+        temperature: 0.45,
+      );
+      final map = _parseResponseJson(content);
+      return _parseGeneratedExercises(
+        map,
+        questionId: question.id,
+        analysis: analysis,
+        sourceQuestionText: sourceQuestionText,
+        existingExercises: question.savedExercises,
+      );
+    } on DioException catch (e) {
+      debugPrint(
+          '[AiAnalysisService] exercise generation DioException: type=${e.type}, status=${e.response?.statusCode}, body=${e.response?.data}');
+      throw AiAnalysisException(_dioErrorMessage(e));
+    } catch (e) {
+      debugPrint('[AiAnalysisService] exercise generation Exception: $e');
+      if (e is AiAnalysisException) rethrow;
+      throw AiAnalysisException('AI 生成举一反三失败: $e');
+    }
+  }
+
+  Future<String> answerQuestionFollowUp({
+    required QuestionRecord question,
+    required String userQuestion,
+    List<AiFollowUpMessage> history = const <AiFollowUpMessage>[],
+  }) async {
+    final trimmedQuestion = userQuestion.trim();
+    if (trimmedQuestion.isEmpty) {
+      throw AiAnalysisException('请输入要追问的问题');
+    }
+
+    final config = await _requireConfig();
+    final prompt = _buildFollowUpPrompt(
+      question: question,
+      userQuestion: trimmedQuestion,
+      history: history,
+    );
+
+    try {
+      final content = await _requestAiContent(
+        config: config,
+        systemPrompt: _followUpSystemPrompt,
+        prompt: prompt,
+        maxTokens: 1200,
+        temperature: 0.35,
+      );
+      final answer = content.trim();
+      if (answer.isEmpty) throw AiAnalysisException('AI 暂未返回答疑内容');
+      return _normalizeExtractedQuestionText(answer);
+    } on DioException catch (e) {
+      debugPrint(
+          '[AiAnalysisService] follow-up DioException: type=${e.type}, status=${e.response?.statusCode}, body=${e.response?.data}');
+      throw AiAnalysisException(_dioErrorMessage(e));
+    } catch (e) {
+      debugPrint('[AiAnalysisService] follow-up Exception: $e');
+      if (e is AiAnalysisException) rethrow;
+      throw AiAnalysisException('AI 答疑失败: $e');
     }
   }
 
@@ -1013,6 +1305,11 @@ class AiAnalysisService {
   }
 
   @visibleForTesting
+  String extractContentFromResponseForTest(Response response) {
+    return _extractContentFromResponse(response);
+  }
+
+  @visibleForTesting
   AnalysisResult parseAnalysisResponseForTest(String content) {
     return _parseAnalysisResponse(content);
   }
@@ -1039,6 +1336,62 @@ class AiAnalysisService {
       analysis,
       questionText: questionText,
     ).isSuspicious;
+  }
+
+  @visibleForTesting
+  bool shouldUseExtractedTextFallbackAfterImageFailureForTest(
+    DioException error,
+    String subjectName,
+  ) {
+    return _shouldUseExtractedTextFallbackAfterImageFailure(error, subjectName);
+  }
+
+  @visibleForTesting
+  bool shouldUseExtractedTextFallbackAfterImageFormatFailureForTest(
+    Object error,
+    String subjectName,
+  ) {
+    return _shouldUseExtractedTextFallbackAfterImageFormatFailure(
+      error,
+      subjectName,
+    );
+  }
+
+  @visibleForTesting
+  bool shouldRetryPostForTest(DioException error) {
+    return _shouldRetryPost(error);
+  }
+
+  @visibleForTesting
+  bool shouldRetryPostWithStatusCodesForTest(
+    DioException error,
+    Set<int> retryStatusCodes,
+  ) {
+    return _shouldRetryPost(error, retryStatusCodes: retryStatusCodes);
+  }
+
+  @visibleForTesting
+  Set<int> extractionRetryStatusCodesForSubjectForTest(String subjectName) {
+    return _extractionRetryStatusCodesForSubject(subjectName);
+  }
+
+  @visibleForTesting
+  bool shouldRetryEmptySseExtractionForTest(
+    Object error,
+    String subjectName,
+  ) {
+    return _shouldRetryEmptySseExtraction(error, subjectName);
+  }
+
+  @visibleForTesting
+  AnalysisResult markExtractionFallbackForReviewForTest(
+    AnalysisResult analysis, {
+    required String extractedText,
+  }) {
+    return _markExtractionFallbackForReview(
+      analysis,
+      extractedText: extractedText,
+    );
   }
 
   @visibleForTesting
@@ -1236,6 +1589,104 @@ class AiAnalysisService {
         status == 504;
   }
 
+  bool _shouldRetryPost(
+    DioException e, {
+    Set<int> retryStatusCodes = const <int>{},
+  }) {
+    final status = e.response?.statusCode;
+    if (status != null) return retryStatusCodes.contains(status);
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.connectionError) {
+      return true;
+    }
+    return e.type == DioExceptionType.unknown;
+  }
+
+  Set<int> _extractionRetryStatusCodesForSubject(String subjectName) {
+    final subject = _parseSubject(subjectName);
+    if (subject == Subject.chemistry || subject == Subject.biology) {
+      return const <int>{524};
+    }
+    return const <int>{};
+  }
+
+  bool _shouldRetryEmptySseExtraction(Object error, String subjectName) {
+    return error is FormatException &&
+        error.message.contains('Empty SSE chat completion content') &&
+        _extractionRetryStatusCodesForSubject(subjectName).isNotEmpty;
+  }
+
+  bool _shouldUseExtractedTextFallbackAfterImageFailure(
+    DioException e,
+    String subjectName,
+  ) {
+    final status = e.response?.statusCode;
+    return status == 524 &&
+        _extractionRetryStatusCodesForSubject(subjectName).isNotEmpty;
+  }
+
+  bool _shouldUseExtractedTextFallbackAfterImageFormatFailure(
+    Object error,
+    String subjectName,
+  ) {
+    return _shouldRetryEmptySseExtraction(error, subjectName);
+  }
+
+  bool _isInstructionOnlyImagePrompt(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return true;
+    return _hasAnySignal(trimmed, const <String>[
+          '请识别图片',
+          '识别图片中的',
+          '整理完整题干',
+          '整理题干',
+          '作答思路',
+        ]) &&
+        !_hasAnySignal(trimmed, const <String>[
+          '已知',
+          '若',
+          '函数',
+          '方程',
+          '合成路线',
+          '分子式',
+          '短文',
+          '阅读',
+          '选项',
+        ]);
+  }
+
+  AnalysisResult _markExtractionFallbackForReview(
+    AnalysisResult analysis, {
+    required String extractedText,
+  }) {
+    final existing = analysis.visualAssumptions;
+    return analysis.copyWith(
+      visualAssumptions: VisualAssumptions(
+        targetObject: existing?.targetObject ?? '图片题目',
+        targetQuestion: existing?.targetQuestion ?? '根据降级提取文本完成解析',
+        measurements: existing?.measurements ?? const [],
+        solutionBasis: existing?.solutionBasis ??
+            <String>[
+              if (extractedText.trim().isNotEmpty)
+                '图像请求失败后，使用已提取题干文本继续解析。'
+              else
+                '图像请求失败后，使用已有题干文本继续解析。',
+            ],
+        uncertainItems: existing?.uncertainItems ?? const <String>['原图关键标注'],
+        needsManualReview: true,
+        reviewReason: existing?.reviewReason.isNotEmpty == true
+            ? existing!.reviewReason
+            : '图像分析降级为文本解析，请核对原图关键标注。',
+      ),
+      visualAssumptionStatus: VisualAssumptionStatus.needsReview,
+      consistencyStatus: AnalysisConsistencyStatus.needsReview,
+      consistencyNote: '图像分析降级为文本解析，请核对原图关键标注。',
+      wasVerifierUsed: false,
+    );
+  }
+
   String _dioErrorMessage(DioException e) {
     final buffer = StringBuffer('AI 服务请求失败');
     if (e.type == DioExceptionType.connectionTimeout ||
@@ -1310,6 +1761,24 @@ class AiAnalysisService {
       );
     }
 
+    if (isSingleChoiceQuestionWithOptionBlock(normalized, subject: subject)) {
+      return QuestionSplitResult(
+        sourceText: normalized,
+        candidates: _buildSplitCandidates(
+            <String>[normalized], QuestionSplitStrategy.fallback),
+        strategy: QuestionSplitStrategy.fallback,
+      );
+    }
+
+    if (isSingleQuestionWithSupportingBlocks(normalized, subject: subject)) {
+      return QuestionSplitResult(
+        sourceText: normalized,
+        candidates: _buildSplitCandidates(
+            <String>[normalized], QuestionSplitStrategy.fallback),
+        strategy: QuestionSplitStrategy.fallback,
+      );
+    }
+
     final paragraphSegments = normalized
         .split(RegExp(r'\n\s*\n+'))
         .map((segment) => segment.trim())
@@ -1334,6 +1803,15 @@ class AiAnalysisService {
 
   String _normalizeExtractedQuestionText(String text) {
     final normalized = text
+        .replaceAll(_escapedNumberedQuestionBreak, '\n')
+        .replaceAllMapped(
+          RegExp(
+              r'(?<!\\)xrightarrow\s*([A-Za-z0-9_+\-/().]+(?:\s*[,，、]\s*(?:Δ|Delta|[A-Za-z0-9_+\-/().]+))*)'),
+          (match) {
+            final condition = _normalizeXrightarrowCondition(match.group(1)!);
+            return '\\xrightarrow{$condition}';
+          },
+        )
         .replaceAllMapped(
           RegExp(r'begin\{(cases|aligned)\}([\s\S]*?)end\{(?:cases|aligned)\}'),
           (match) {
@@ -1365,6 +1843,19 @@ class AiAnalysisService {
           RegExp(r'\\?mathrm([A-Za-zΩ]+)(\^-?\d+)?'),
           (match) => '\\mathrm{${match.group(1)}}${match.group(2) ?? ''}',
         );
+  }
+
+  String _normalizeXrightarrowCondition(String condition) {
+    return condition
+        .split(RegExp(r'[,，、]'))
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .map((part) {
+      if (part == 'Δ' || part.toLowerCase() == 'delta') {
+        return r'\Delta';
+      }
+      return part;
+    }).join(', ');
   }
 
   bool _isCompositeLanguageAnalysis(String text, String subjectName) {
@@ -1472,10 +1963,10 @@ class AiAnalysisService {
   }
 
   List<String> _splitByNumberedQuestions(String text) {
-    final matches =
-        RegExp(r'(^|\n)\s*(?:第\s*\d+\s*题|\d+[\.、．)])\s*', multiLine: true)
-            .allMatches(text)
-            .toList();
+    final matches = RegExp(
+      r'(^|\n)\s*(?:第\s*\d+\s*题|\d+(?:[、．)]|\.(?!\d)))\s*',
+      multiLine: true,
+    ).allMatches(text).toList();
     if (matches.length < 2) return const <String>[];
 
     final segments = <String>[];
@@ -1622,27 +2113,15 @@ class AiAnalysisService {
 3. 提供正确的解题思路和答案
 4. 分析学生可能犯错误的原因
 5. 提供学习建议和相关的知识点
-6. 生成举一反三的练习题（选择题格式，带 A/B/C/D 选项）
 
 重要规则：
+- 本次只做本题解析，不生成额外练习题，不输出与练习题相关的内容
 - 优先使用用户已确认的题目文本；如果输入包含图片且文本不足，必须直接根据图片理解题目并解题
 - reconstructedQuestionText 必须整理出完整题干；图形题应基于读图理解补全已知条件和求解目标
 - 答案必须准确、有条理
-- 生成的练习题应该难度适中、与原题相关
 - finalAnswer 只能填写题目最终要求的答案，不要填写中间量；必须与 steps 最后一条最终结论一致
 - finalAnswerDerivation 必须用一句话说明最终答案来源，且必须与 finalAnswer 一致；如果 steps、mistakeReason 中出现其他中间答案，不得把中间答案写入 finalAnswer
 - 输出 JSON 前必须自检 finalAnswer、finalAnswerDerivation、steps、mistakeReason 是否一致；若不一致，以重新验算后的最终结论同步修正
-- generatedExercises 必须围绕本题同一个知识点、同一题型、同一种核心解法生成，禁止退化成无关的简单加减法或一元一次方程
-- 如果原题含有平方项、平方根、一元二次或 \(x^2=a\) 结构，练习题也必须包含平方项/开平方/正负根相关解法，不能生成 \(x+1=4\)、\(2x=8\) 这类一元一次题
-- 如果原题是三角形内角/外角/等腰三角形，练习题也必须是三角形角度关系题
-- 如果原题是方程组，练习题也必须是方程组题
-- 练习题必须是选择题格式，包含 A/B/C/D 四个选项，其中一个是正确答案
-- 答案字段填写正确选项的字母（如 "A"）
-- 【几何题配图规则】如果原题属于几何类（三角形、圆、平行四边形、梯形、圆锥等），每道练习题必须附带 diagramData 字段，用结构化 JSON 描述几何图形。坐标使用归一化 0-1 范围。格式：
-  {"elements":[{"type":"polygon","points":[[x,y],...],"labels":[{"text":"A","x":0.5,"y":0.05}]},{"type":"line","x1":0,"y1":0,"x2":1,"y2":1,"style":"solid|dashed","role":"known|target|label"},{"type":"text","text":"10cm","x":0.5,"y":0.7,"role":"known"},{"type":"angleArc","vx":0.5,"vy":0.1,"startAngle":55,"sweepAngle":70,"r":0.08,"label":"50°"},{"type":"rightAngle","x":0.5,"y":0.8},{"type":"tickMark","x1":0,"y1":0,"x2":0.5,"y2":0.5,"ticks":1},{"type":"arc","cx":0.5,"cy":0.5,"r":0.3,"startAngle":0,"sweepAngle":180,"filled":true},{"type":"ellipse","cx":0.5,"cy":0.8,"rx":0.3,"ry":0.08},{"type":"point","x":0.5,"y":0.5,"label":"O","role":"label"}],"auxiliaryLines":[...同格式，解题辅助线]}
-  role 取值：known（已知条件红色）、target/solve（求解目标绿色）、label（标注蓝色）、auxiliary（辅助线橙色）、external（外角弧）
-  三角形外角图必须画清楚延长线：例如“D 在 AB 的延长线上”时，D、A、B 必须共线且 D 在 A 的另一侧；表示外角的 angleArc 必须加 "role":"external"，并画在延长线与另一边之间，不能画成三角形内角。
-  非几何题不要输出 diagramData
 - aiTags 要求简短精炼（2-8个字），数量 2-4 个，如 ["压强", "力学", "公式"]
 - knowledgePoints 可以详细描述，长度不限，如 ["压强公式p=f/s，压强与压力的关系", "受力面积相同时，压力越大压强越大"]
 - 如果内容包含 LaTeX，必须先生成合法 JSON：所有 LaTeX 反斜杠都写成 JSON 转义形式，例如 \\frac、\\times、\\(x\\)、\\[x\\]
@@ -1657,25 +2136,29 @@ class AiAnalysisService {
   3. 角度/度数统一用 ^\circ，圆周率统一用 \pi
   4. 上标用 ^{n} 格式，禁止裸 ^n
   5. 物理单位用 \mathrm{}：\mathrm{kg}、\mathrm{m}、\mathrm{N}、\mathrm{Pa}、\mathrm{J}、\mathrm{W}、\mathrm{V}、\mathrm{A}、\mathrm{\Omega}
-  6. generatedExercises 中的 question、options、explanation 字段同样必须遵守上述所有 LaTeX 格式规则
-  7. JSON 转义规则：反斜杠双写，\ → \\，\\ → \\\\。换行用 \\n。cases 环境行分隔符 \\ → \\\\
+  6. JSON 转义规则：反斜杠双写，\ → \\，\\ → \\\\。换行用 \\n。cases 环境行分隔符 \\ → \\\\
      - 示例：\\(x^2=4\)\\n  所以 x=\\pm 2  // JSON 中 \\n = 换行，\\pi = \pi，\\pm = \pm
      - 示例：\[\\begin{cases} x+y=5 \\\\ x-y=1 \\end{cases}\]  // \\\\ 在 JSON 中表示 LaTeX 换行符 \\
 返回格式必须严格如下（不要包含 markdown 代码块标记，使用纯 JSON）：
 {
   "subject": "自动判断的科目名称",
   "reconstructedQuestionText": "根据文本或图片理解整理出的完整题干",
+  "visualAssumptions": {
+    "targetObject": "",
+    "targetQuestion": "",
+    "measurements": [{"label": "", "meaning": "", "usedInSolution": true, "evidence": "image|text|inferred", "confidence": "high|medium|low"}],
+    "solutionBasis": [""],
+    "uncertainItems": [""],
+    "needsManualReview": false,
+    "reviewReason": ""
+  },
   "finalAnswer": "正确答案或解题要点",
   "finalAnswerDerivation": "最终答案来源说明，必须与 finalAnswer 一致",
   "steps": ["解题步骤1", "解题步骤2"],
   "aiTags": ["短标签1", "短标签2", "短标签3"],
   "knowledgePoints": ["知识点1详细描述", "知识点2详细描述"],
   "mistakeReason": "错误原因分析",
-  "studyAdvice": "学习建议",
-  "generatedExercises": [
-    {"id": "e1", "difficulty": "简单", "question": "练习题目", "options": ["A. 选项1", "B. 选项2", "C. 选项3", "D. 选项4"], "answer": "A", "explanation": "解析", "diagramData": null},
-    {"id": "e2", "difficulty": "同级", "question": "几何练习题（示例）", "options": ["A. 选项1", "B. 选项2", "C. 选项3", "D. 选项4"], "answer": "B", "explanation": "解析", "diagramData": {"elements":[{"type":"polygon","points":[[0.2,0.8],[0.8,0.8],[0.5,0.2]],"labels":[{"text":"A","x":0.5,"y":0.12},{"text":"B","x":0.15,"y":0.88},{"text":"C","x":0.85,"y":0.88}]},{"type":"text","text":"5cm","x":0.35,"y":0.48,"role":"known"},{"type":"angleArc","vx":0.5,"vy":0.2,"startAngle":55,"sweepAngle":70,"r":0.08,"label":"60°"}]}}
-  ]
+  "studyAdvice": "学习建议"
 }''';
 
   static const _defaultExtractionSystemPrompt =
@@ -1715,6 +2198,56 @@ class AiAnalysisService {
   "normalizedQuestionText": "整理后的标准题目文本"
 }''';
 
+  static const _exerciseGenerationSystemPrompt = r'''你是一个专业的错题练习生成助手。
+
+你的任务是：
+1. 只基于用户提供的已保存错题、答案、步骤、知识点和错因，生成举一反三练习
+2. 不重新 OCR，不重新解析原图，不改写原题答案
+3. 练习必须贴近原题核心知识点，不能漂移到无关题型
+4. 最多生成 3 道题，优先覆盖简单、同级、提高；如果无法保证质量，可以少于 3 道
+5. 每道题尽量提供 A-D 四个选项、正确答案和简短解析
+
+重要规则：
+- 返回纯 JSON，不要包含 markdown 代码块
+- 顶层只返回 generatedExercises 字段
+- generatedExercises 可以是 0 到 3 道；宁可少生成，也不要生成无关、错误或占位练习
+- 每道题字段包含 difficulty、question、options、answer、explanation
+- answer 使用选项字母，例如 "A"；没有选择题条件时也要尽量改写成选择题
+- 如果内容包含 LaTeX，必须先生成合法 JSON：所有 LaTeX 反斜杠都写成 JSON 转义形式，例如 \\frac、\\times、\\(x\\)、\\[x\\]
+- 方程组或多行公式必须使用 KaTeX 兼容的 aligned 或 cases 环境，例如 \\begin{cases} x+y=5 \\\\ x-y=1 \\end{cases}，不要使用 \\newline
+
+返回格式：
+{
+  "generatedExercises": [
+    {
+      "difficulty": "简单",
+      "question": "题目",
+      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "answer": "A",
+      "explanation": "解析"
+    }
+  ]
+}''';
+
+  static const _followUpSystemPrompt = r'''你是一个耐心、准确的错题答疑老师。
+
+你的任务是：
+1. 只围绕用户当前保存的这道错题答疑
+2. 使用题干、答案、解题步骤、错因、知识点和学习建议作为上下文
+3. 针对学生的追问给出清晰、分步骤、可理解的解释
+4. 不重新 OCR，不重新分析图片，不生成举一反三练习
+5. 如果用户追问超出本题范围，可以简短说明，并把回答拉回本题相关知识点
+
+回答规则：
+- 直接回答学生问题，不输出 JSON
+- 不要推翻已给解析；如果发现解析可能有疑点，用“需要核对”的方式谨慎说明
+- 数学、物理、化学公式用标准 LaTeX 定界符：行内 \(公式\)，独立 \[公式\]
+- 排版要适合手机阅读：每段 1-3 句话，关键公式单独成行
+- 普通变量、单个数字、简单符号不要频繁包成 LaTeX，例如直接写 x、+1、1；完整公式再使用 LaTeX
+- 不要把一个普通句子拆成很多单字或单公式换行
+- 回答尽量短而清楚，优先解释“为什么”和“下一步怎么想”
+''';
+
   Future<String> _loadAnalysisSystemPrompt() async {
     final custom = await settingsRepository.getString('system_prompt');
     return custom?.isNotEmpty == true ? custom! : _defaultAnalysisSystemPrompt;
@@ -1734,7 +2267,10 @@ class AiAnalysisService {
   }) {
     final buffer = StringBuffer();
     buffer.writeln('请先做题目结构化提取。');
-    buffer.writeln('用户当前选择的科目提示：$subjectName');
+    final subject = _parseSubject(subjectName);
+    if (subject != null && subject != Subject.unknown) {
+      buffer.writeln('用户当前选择的科目提示：$subjectName');
+    }
     if (textHint.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('用户已有文本提示：');
@@ -1747,6 +2283,17 @@ class AiAnalysisService {
     buffer.writeln(
         '请输出 subject、extractedQuestionText、normalizedQuestionText。方程组或多行公式请使用 aligned/cases 环境，不要使用 \\newline。');
     return buffer.toString();
+  }
+
+  @visibleForTesting
+  String buildExtractionPromptForTest({
+    required String subjectName,
+    required String textHint,
+  }) {
+    return _buildExtractionPrompt(
+      subjectName: subjectName,
+      textHint: textHint,
+    );
   }
 
   bool isGraphicalQuestion(
@@ -1789,6 +2336,31 @@ class AiAnalysisService {
     return RegExp(r'如图|下图|上图|图中|示意图|阴影|图形|图示|图所示|看图|观察图').hasMatch(normalized);
   }
 
+  bool _shouldAnalyzeScienceImageFirst(String text, String subjectName) {
+    final subject = _parseSubject(subjectName);
+    if (subject != Subject.chemistry && subject != Subject.biology) {
+      return false;
+    }
+
+    final normalized = text.toLowerCase();
+    final hasImageRouteCue = _hasAnySignal(normalized, <String>[
+      '如图',
+      '图示',
+      '图中',
+      '下图',
+      '路线图',
+      '结构式',
+      '合成路线',
+    ]);
+    if (!hasImageRouteCue) return false;
+
+    final conditionCount = RegExp(
+      r'cl2|fecl3|naoh|h\+|hno3|h2so4|nh2oh|pd/hcl|cs2|ch3oh|乙酸酐|浓硝酸|浓硫酸|加热|催化|分子式',
+    ).allMatches(normalized).length;
+    final hasEnoughExtractedRoute = text.length >= 80 && conditionCount >= 2;
+    return !hasEnoughExtractedRoute;
+  }
+
   @visibleForTesting
   String buildAnalysisPromptForTest(
     String correctedText,
@@ -1808,7 +2380,13 @@ class AiAnalysisService {
     bool isGraphicalQuestion = false,
   }) {
     final buffer = StringBuffer();
-    buffer.writeln('请分析以下$subjectName科目的错题：');
+    if (_parseSubject(subjectName) == Subject.unknown) {
+      buffer.writeln('请分析以下错题，请先根据题目内容判断科目：');
+    } else {
+      buffer.writeln('请分析以下$subjectName科目的错题：');
+    }
+    buffer.writeln();
+    buffer.writeln('解析优先模式：本次只做解析，不生成额外练习题。');
     buffer.writeln();
     if (isGraphicalQuestion) {
       buffer.writeln('图片题输入说明：');
@@ -1842,57 +2420,236 @@ class AiAnalysisService {
           '11. finalAnswer、finalAnswerDerivation 和 steps 最后一条必须是同一个最终答案；如果读图假设不确定，也只能给一个“在该假设下”的最终答案，不得在 finalAnswerDerivation 中同时写互斥答案。');
       buffer.writeln();
     }
-    final topicProfile =
-        _buildExerciseTopicProfile(sourceQuestionText: correctedText);
-    final topicAnchor = _exerciseAnchorText(topicProfile);
-    if (topicAnchor.isNotEmpty) {
-      buffer.writeln('举一反三锚点：$topicAnchor');
-      buffer.writeln(
-          'generatedExercises 必须保持 domain/object/method，不得生成 avoid 中的题型。');
-      buffer.writeln(
-          'generatedExercises 必须恰好 3 道选择题，difficulty 依次为 简单、同级、提高；三题必须保持同一知识点、同一题型、同一核心解法。');
-      buffer.writeln(
-          '难度递进只能通过换数、增加一步同方法变形或增加一个同主题条件完成，禁止通过切换题型/知识点提高难度；无法满足时返回空 generatedExercises。');
-      final isGeometryDomain =
-          topicProfile.domain == _ExerciseDomain.planeGeometryArea ||
-              topicProfile.domain == _ExerciseDomain.planeGeometryAngle ||
-              topicProfile.domain == _ExerciseDomain.planeGeometryLength ||
-              topicProfile.domain == _ExerciseDomain.solidGeometryVolume;
-      if (isGraphicalQuestion || isGeometryDomain) {
-        buffer.writeln(
-            '几何题的每道 generatedExercises 必须包含 diagramData 字段（归一化坐标），不得为 null。');
-      }
-      buffer.writeln();
-    }
     buffer.writeln(
-        '请以 JSON 格式返回完整的分析结果，包含 subject、reconstructedQuestionText、visualAssumptions、finalAnswer、finalAnswerDerivation、steps、aiTags、knowledgePoints、mistakeReason、studyAdvice、exerciseAnchor、generatedExercises 字段。reconstructedQuestionText 是 AI 根据题目文本或读图理解整理出的完整题干；图形题的 reconstructedQuestionText 只能包含与求解目标直接相关、且从图片可确认的条件，不要强行命名外部轮廓或解释无关数字。visualAssumptions 格式为 {"targetObject":"","targetQuestion":"","measurements":[{"label":"","meaning":"","usedInSolution":true,"evidence":"image|text|inferred","confidence":"high|medium|low"}],"solutionBasis":[""],"uncertainItems":[""],"needsManualReview":false,"reviewReason":""}；所有步骤使用的图中标注都必须先出现在 measurements 或 solutionBasis 中。exerciseAnchor 只用短枚举，格式 {"domain":"","object":"","methods":[""],"avoid":[""]}。finalAnswerDerivation 必须只说明 finalAnswer 的来源，不能列出与 finalAnswer 互斥的另一个答案；finalAnswer、finalAnswerDerivation、steps 最后一条必须一致。方程组或多行公式请使用 aligned/cases 环境，不要使用 \\newline。');
+        '请以 JSON 格式返回完整的本题分析结果，包含 subject、reconstructedQuestionText、visualAssumptions、finalAnswer、finalAnswerDerivation、steps、aiTags、knowledgePoints、mistakeReason、studyAdvice 字段。reconstructedQuestionText 是 AI 根据题目文本或读图理解整理出的完整题干；图形题的 reconstructedQuestionText 只能包含与求解目标直接相关、且从图片可确认的条件，不要强行命名外部轮廓或解释无关数字。visualAssumptions 格式为 {"targetObject":"","targetQuestion":"","measurements":[{"label":"","meaning":"","usedInSolution":true,"evidence":"image|text|inferred","confidence":"high|medium|low"}],"solutionBasis":[""],"uncertainItems":[""],"needsManualReview":false,"reviewReason":""}；所有步骤使用的图中标注都必须先出现在 measurements 或 solutionBasis 中。finalAnswerDerivation 必须只说明 finalAnswer 的来源，不能列出与 finalAnswer 互斥的另一个答案；finalAnswer、finalAnswerDerivation、steps 最后一条必须一致。方程组或多行公式请使用 aligned/cases 环境，不要使用 \\newline。');
     return buffer.toString();
   }
 
-  String _exerciseAnchorText(_ExerciseTopicProfile profile) {
-    switch (profile.domain) {
-      case _ExerciseDomain.planeGeometryArea:
-        return 'domain=planeGeometryArea; object=${profile.object.name}; methods=${profile.methods.map((m) => m.name).join('/')}; variant=${profile.variant?.name ?? 'generic'}; avoid=equation/function/quadraticRoot/solidVolume/lengthOnly';
-      case _ExerciseDomain.planeGeometryLength:
-        return 'domain=planeGeometryLength; object=rightTriangle; methods=${profile.methods.map((m) => m.name).join('/')}; variant=rightTriangleLength; avoid=area/angle/equation/function/volume';
-      case _ExerciseDomain.algebraEquation:
-        if (profile.object == _ExerciseObject.quadraticEquation) {
-          return 'domain=algebraEquation; object=quadraticEquation; methods=squareRoot; avoid=linearEquation/function/geometry/volume';
-        }
-        return 'domain=algebraEquation; object=linearEquation; methods=linearSolve; avoid=quadraticRoot/function/geometry/volume';
-      case _ExerciseDomain.equationSystem:
-        return 'domain=equationSystem; object=equationSystem; methods=elimination; avoid=linearEquation/quadraticRoot/function/geometry';
-      case _ExerciseDomain.planeGeometryAngle:
-        return 'domain=planeGeometryAngle; object=triangle; methods=angleSum; avoid=equation/function/volume';
-      case _ExerciseDomain.solidGeometryVolume:
-        return 'domain=solidGeometryVolume; object=coneCylinder; methods=formulaSubstitution; variant=${profile.variant?.name ?? 'generic'}; avoid=quadraticRoot/function/equationSystem/planeGeometryArea';
-      case _ExerciseDomain.functionEvaluation:
-        return 'domain=functionEvaluation; object=functionExpression; methods=functionSubstitution; avoid=quadraticRoot/equationSystem/geometry/volume';
-      case _ExerciseDomain.proportionalRelation:
-        return 'domain=proportionalRelation; object=proportionalRelation; methods=ratioRelation; avoid=equationSystem/quadraticRoot/function/geometry';
-      case _ExerciseDomain.generic:
-        return '';
+  String _buildCompactAnalysisPrompt(String correctedText, String subjectName) {
+    final buffer = StringBuffer();
+    buffer.writeln('紧凑解析模式：上一次请求超时或服务网关失败，本次只做本题解析，不生成额外练习题。');
+    if (_parseSubject(subjectName) == Subject.unknown) {
+      buffer.writeln('请分析以下错题，请先根据题目内容判断科目，并优先保证 finalAnswer、steps、错因和知识点完整。');
+    } else {
+      buffer.writeln('请分析以下$subjectName科目的错题，优先保证 finalAnswer、steps、错因和知识点完整。');
     }
+    buffer.writeln();
+    buffer.writeln('题目文本：');
+    buffer.writeln(correctedText);
+    buffer.writeln();
+    buffer.writeln(
+        '只返回 JSON，字段包含 subject、reconstructedQuestionText、visualAssumptions、finalAnswer、finalAnswerDerivation、steps、aiTags、knowledgePoints、mistakeReason、studyAdvice。不要返回 generatedExercises 或 exerciseAnchor。');
+    return buffer.toString();
+  }
+
+  @visibleForTesting
+  String buildExerciseGenerationPromptForTest(QuestionRecord question) {
+    return _buildExerciseGenerationPrompt(question);
+  }
+
+  String _buildExerciseGenerationPrompt(QuestionRecord question) {
+    final analysis = question.analysisResult;
+    final questionText = question.normalizedQuestionText.trim().isNotEmpty
+        ? question.normalizedQuestionText.trim()
+        : question.extractedQuestionText.trim();
+    final buffer = StringBuffer();
+    buffer.writeln('请为下面这道已保存错题生成举一反三练习。');
+    buffer.writeln('本任务只生成练习题，不重新识别图片，不重新解析原题。');
+    buffer.writeln();
+    buffer.writeln('科目：${question.subject.name}');
+    buffer.writeln();
+    buffer.writeln('原题题干：');
+    buffer.writeln(questionText);
+    if (analysis != null) {
+      buffer.writeln();
+      buffer.writeln('本题答案：');
+      buffer.writeln(analysis.finalAnswer);
+      if (analysis.finalAnswerDerivation.trim().isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('答案来源：');
+        buffer.writeln(analysis.finalAnswerDerivation);
+      }
+      if (analysis.steps.isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('解题步骤：');
+        for (final step in analysis.steps) {
+          buffer.writeln('- $step');
+        }
+      }
+      if (analysis.aiTags.isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('标签：${analysis.aiTags.join('、')}');
+      }
+      if (analysis.knowledgePoints.isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('知识点：');
+        for (final point in analysis.knowledgePoints) {
+          buffer.writeln('- $point');
+        }
+      }
+      if (analysis.mistakeReason.trim().isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('错因：${analysis.mistakeReason}');
+      }
+      if (analysis.studyAdvice.trim().isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('学习建议：${analysis.studyAdvice}');
+      }
+    }
+    if (question.savedExercises.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('已有练习题：');
+      for (final exercise in question.savedExercises) {
+        buffer.writeln('- ${exercise.question}');
+      }
+      buffer.writeln('请避开以上已有练习题，不要生成与已有练习题重复或高度相似的题。');
+    }
+    buffer.writeln();
+    buffer.writeln('生成要求：');
+    buffer.writeln(
+        '1. generatedExercises 最多 3 道，优先覆盖简单、同级、提高；如果无法保证质量，可以少于 3 道。');
+    buffer.writeln('2. 三道题都要围绕原题同一核心知识点，只改变数字、条件或表达方式，不要漂移到无关题型。');
+    buffer.writeln(
+        '3. 每题必须包含 question、options、answer、explanation；options 使用 A-D 四项。');
+    buffer.writeln('4. 不要为了凑数量生成占位题、通用代数题或与原题无关的题；无法生成可靠练习时返回空数组。');
+    buffer.writeln('5. 只返回 JSON，不要返回本题解析、OCR、标签、知识点或其他顶层字段。');
+    return buffer.toString();
+  }
+
+  @visibleForTesting
+  String buildFollowUpPromptForTest({
+    required QuestionRecord question,
+    required String userQuestion,
+    List<AiFollowUpMessage> history = const <AiFollowUpMessage>[],
+  }) {
+    return _buildFollowUpPrompt(
+      question: question,
+      userQuestion: userQuestion,
+      history: history,
+    );
+  }
+
+  String _buildFollowUpPrompt({
+    required QuestionRecord question,
+    required String userQuestion,
+    required List<AiFollowUpMessage> history,
+  }) {
+    final analysis = question.analysisResult;
+    final questionText = question.normalizedQuestionText.trim().isNotEmpty
+        ? question.normalizedQuestionText.trim()
+        : question.extractedQuestionText.trim();
+    final buffer = StringBuffer();
+    buffer.writeln('请围绕下面这道已保存错题回答学生追问。');
+    buffer.writeln('本任务只做答疑，不重新识别图片，不重新解析原题，不生成举一反三练习。');
+    buffer.writeln();
+    buffer.writeln('科目：${question.subject.name}');
+    buffer.writeln();
+    buffer.writeln('原题题干：');
+    buffer.writeln(questionText);
+
+    if (analysis != null) {
+      buffer.writeln();
+      buffer.writeln('本题答案：');
+      buffer.writeln(analysis.finalAnswer);
+      if (analysis.finalAnswerDerivation.trim().isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('答案来源：');
+        buffer.writeln(analysis.finalAnswerDerivation);
+      }
+      if (analysis.steps.isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('解题步骤：');
+        for (final step in analysis.steps) {
+          buffer.writeln('- $step');
+        }
+      }
+      if (analysis.knowledgePoints.isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('知识点：');
+        for (final point in analysis.knowledgePoints) {
+          buffer.writeln('- $point');
+        }
+      }
+      if (analysis.mistakeReason.trim().isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('错因：${analysis.mistakeReason}');
+      }
+      if (analysis.studyAdvice.trim().isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('学习建议：${analysis.studyAdvice}');
+      }
+    }
+
+    if (history.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('本轮答疑历史：');
+      for (final message in history.take(8)) {
+        final role = message.role == 'assistant' ? 'AI' : '学生';
+        buffer.writeln('$role：${message.content}');
+      }
+    }
+
+    buffer.writeln();
+    buffer.writeln('学生追问：');
+    buffer.writeln(userQuestion.trim());
+    buffer.writeln();
+    buffer.writeln('请直接回答追问，必要时结合原题步骤解释。');
+    buffer.writeln('请使用适合手机阅读的短段落；不要把单个 x、1、+1 这类简单内容单独写成公式。');
+    return buffer.toString();
+  }
+
+  bool _shouldRetryTextAnalysisWithCompact(DioException e) {
+    final status = e.response?.statusCode;
+    return status == 524 ||
+        status == 408 ||
+        status == 429 ||
+        status == 500 ||
+        status == 502 ||
+        status == 503 ||
+        status == 504 ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.connectionError;
+  }
+
+  Future<AnalysisResult> _analyzeAfterImageFailureWithTextFallback({
+    required AiProviderConfig config,
+    required String systemPrompt,
+    required String correctedText,
+    required String subjectName,
+    required String imagePath,
+  }) async {
+    var fallbackText = correctedText.trim();
+    if (_isInstructionOnlyImagePrompt(fallbackText) &&
+        File(imagePath).existsSync()) {
+      try {
+        final extraction = await extractQuestionStructure(
+          subjectName: subjectName,
+          imagePath: imagePath,
+          textHint: correctedText,
+        );
+        final extracted = extraction.normalizedQuestionText.trim().isNotEmpty
+            ? extraction.normalizedQuestionText.trim()
+            : extraction.extractedQuestionText.trim();
+        if (extracted.isNotEmpty) fallbackText = extracted;
+      } catch (e) {
+        debugPrint('[AiAnalysisService] extraction fallback failed: $e');
+      }
+    }
+
+    final content = await _requestAiContent(
+      config: config,
+      systemPrompt: systemPrompt,
+      prompt: _buildCompactAnalysisPrompt(fallbackText, subjectName),
+      maxTokens: 1800,
+      temperature: 0.2,
+    );
+    final analysis = _parseAnalysisResponse(content);
+    return _markExtractionFallbackForReview(
+      analysis,
+      extractedText: fallbackText,
+    );
   }
 
   Map<String, dynamic> _parseResponseJson(String content) {
@@ -1935,6 +2692,11 @@ class AiAnalysisService {
       jsonStr = jsonStr
           .replaceFirst(RegExp(r'^```\w*\n?'), '')
           .replaceFirst(RegExp(r'\n?```$'), '');
+    }
+    final firstJsonBrace = jsonStr.indexOf('{');
+    final lastJsonBrace = jsonStr.lastIndexOf('}');
+    if (firstJsonBrace >= 0 && lastJsonBrace > firstJsonBrace) {
+      jsonStr = jsonStr.substring(firstJsonBrace, lastJsonBrace + 1);
     }
     return jsonStr;
   }
@@ -2088,7 +2850,7 @@ class AiAnalysisService {
       subject: subject,
       extractedQuestionText: extractedQuestionText,
       normalizedQuestionText: normalizedQuestionText,
-      splitResult: _defaultSplitQuestionCandidates(splitSeed),
+      splitResult: _defaultSplitQuestionCandidates(splitSeed, subject: subject),
     );
   }
 
@@ -2146,6 +2908,7 @@ class AiAnalysisService {
     required String questionId,
     AnalysisResult? analysis,
     String? sourceQuestionText,
+    List<GeneratedExercise> existingExercises = const <GeneratedExercise>[],
   }) {
     final map = _parseResponseJson(content);
     return _parseGeneratedExercises(
@@ -2153,6 +2916,7 @@ class AiAnalysisService {
       questionId: questionId,
       analysis: analysis,
       sourceQuestionText: sourceQuestionText,
+      existingExercises: existingExercises,
     );
   }
 
@@ -2160,11 +2924,15 @@ class AiAnalysisService {
     AnalysisResult analysis, {
     required String questionId,
     String? sourceQuestionText,
+    List<GeneratedExercise> existingExercises = const <GeneratedExercise>[],
   }) {
-    return _defaultGeneratedExercises(
-      questionId,
-      analysis: analysis,
-      sourceQuestionText: sourceQuestionText,
+    return _filterDuplicateGeneratedExercises(
+      _defaultGeneratedExercises(
+        questionId,
+        analysis: analysis,
+        sourceQuestionText: sourceQuestionText,
+      ),
+      existingExercises: existingExercises,
     );
   }
 
@@ -2173,23 +2941,38 @@ class AiAnalysisService {
     required String questionId,
     AnalysisResult? analysis,
     String? sourceQuestionText,
+    List<GeneratedExercise> existingExercises = const <GeneratedExercise>[],
   }) {
+    final parsedAnalysis = analysis ?? _analysisFromParsedMap(map);
+    if (_shouldSuppressGeneratedExercises(
+      parsedAnalysis,
+      sourceQuestionText: sourceQuestionText,
+    )) {
+      return const <GeneratedExercise>[];
+    }
+
     final rawExercises = map['generatedExercises'];
     if (rawExercises is! List || rawExercises.isEmpty) {
-      return _defaultGeneratedExercises(
-        questionId,
-        analysis: analysis,
-        sourceQuestionText: sourceQuestionText,
+      return _filterDuplicateGeneratedExercises(
+        _defaultGeneratedExercises(
+          questionId,
+          analysis: parsedAnalysis,
+          sourceQuestionText: sourceQuestionText,
+        ),
+        existingExercises: existingExercises,
       );
     }
 
-    final parsedAnalysis = analysis ?? _analysisFromParsedMap(map);
     final sourceProfile = _buildExerciseTopicProfile(
       sourceQuestionText: sourceQuestionText,
       analysis: parsedAnalysis,
     );
     final now = DateTime.now();
     final parsed = <GeneratedExercise>[];
+    final usedQuestionKeys = existingExercises
+        .map((exercise) => _exerciseDuplicateKey(exercise.question))
+        .where((key) => key.isNotEmpty)
+        .toSet();
 
     for (var index = 0; index < rawExercises.length; index++) {
       final item = rawExercises[index];
@@ -2240,6 +3023,11 @@ class AiAnalysisService {
       final acceptable =
           _isGeneratedExerciseAcceptable(exercise, sourceProfile);
       if (acceptable) {
+        final duplicateKey = _exerciseDuplicateKey(exercise.question);
+        if (duplicateKey.isEmpty || usedQuestionKeys.contains(duplicateKey)) {
+          continue;
+        }
+        usedQuestionKeys.add(duplicateKey);
         parsed.add(GeneratedExercise(
           id: exercise.id,
           questionId: exercise.questionId,
@@ -2262,20 +3050,33 @@ class AiAnalysisService {
         analysis: parsedAnalysis,
         sourceQuestionText: sourceQuestionText,
       );
-      return _mergeGeneratedExercisesWithDefaults(
-        parsed,
-        defaults,
-        questionId: questionId,
-        now: now,
+      if (defaults.isEmpty) {
+        return _selectPracticeExerciseSet(
+          parsed,
+          questionId: questionId,
+          now: now,
+        );
+      }
+      return _filterDuplicateGeneratedExercises(
+        _mergeGeneratedExercisesWithDefaults(
+          parsed,
+          defaults,
+          questionId: questionId,
+          now: now,
+        ),
+        existingExercises: existingExercises,
       );
     }
 
     final expectedCount = rawExercises.length >= 3 ? 3 : rawExercises.length;
     if (parsed.length < expectedCount) {
-      return _defaultGeneratedExercises(
-        questionId,
-        analysis: parsedAnalysis,
-        sourceQuestionText: sourceQuestionText,
+      return _filterDuplicateGeneratedExercises(
+        _defaultGeneratedExercises(
+          questionId,
+          analysis: parsedAnalysis,
+          sourceQuestionText: sourceQuestionText,
+        ),
+        existingExercises: existingExercises,
       );
     }
 
@@ -2284,6 +3085,54 @@ class AiAnalysisService {
       questionId: questionId,
       now: now,
     );
+  }
+
+  List<GeneratedExercise> _filterDuplicateGeneratedExercises(
+    List<GeneratedExercise> exercises, {
+    required List<GeneratedExercise> existingExercises,
+  }) {
+    if (exercises.isEmpty) return exercises;
+    final usedQuestionKeys = existingExercises
+        .map((exercise) => _exerciseDuplicateKey(exercise.question))
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    final filtered = <GeneratedExercise>[];
+    for (final exercise in exercises) {
+      final key = _exerciseDuplicateKey(exercise.question);
+      if (key.isEmpty || usedQuestionKeys.contains(key)) continue;
+      usedQuestionKeys.add(key);
+      filtered.add(GeneratedExercise(
+        id: exercise.id,
+        questionId: exercise.questionId,
+        generationMode: exercise.generationMode,
+        difficulty: exercise.difficulty,
+        question: exercise.question,
+        answer: exercise.answer,
+        explanation: exercise.explanation,
+        createdAt: exercise.createdAt,
+        order: filtered.length,
+        options: exercise.options,
+        userAnswer: exercise.userAnswer,
+        roundIndex: exercise.roundIndex,
+        roundTotal: exercise.roundTotal,
+        roundGroupId: exercise.roundGroupId,
+        sourceExerciseId: exercise.sourceExerciseId,
+        diagramData: exercise.diagramData,
+      ));
+    }
+    return filtered;
+  }
+
+  String _exerciseDuplicateKey(String question) {
+    return question
+        .toLowerCase()
+        .replaceAll(r'\(', '')
+        .replaceAll(r'\)', '')
+        .replaceAll(r'\[', '')
+        .replaceAll(r'\]', '')
+        .replaceAll(r'\mathrm', '')
+        .replaceAll(RegExp(r'[\s`$\\{}（）【】\[\]，。,.；;：:！!？?、]+'), '')
+        .trim();
   }
 
   List<GeneratedExercise> _mergeGeneratedExercisesWithDefaults(
@@ -2722,6 +3571,11 @@ class AiAnalysisService {
     final text =
         '${exercise.question} ${exercise.explanation} ${exercise.options?.join(' ') ?? ''}';
     return _hasAnySignal(text, <String>[
+      '占位练习',
+      '原题图片或文本缺失',
+      '题干缺失',
+      '没有可识别',
+      '无法识别',
       '选项中没有',
       '没有该值',
       '无正确选项',
@@ -2871,6 +3725,10 @@ class AiAnalysisService {
   ) {
     final normalized = text.toLowerCase();
     switch (profile.domain) {
+      case _ExerciseDomain.organicChemistry:
+        return _hasOrganicChemistrySignal(normalized);
+      case _ExerciseDomain.physicsCircuit:
+        return _hasPhysicsCircuitSignal(normalized);
       case _ExerciseDomain.functionEvaluation:
         return _hasFunctionSignal(normalized) &&
             _hasAnySignal(normalized,
@@ -2905,6 +3763,9 @@ class AiAnalysisService {
   }) {
     final text = <String>[
       sourceQuestionText ?? '',
+      analysis?.subject?.name ?? '',
+      analysis?.subject?.label ?? '',
+      analysis?.reconstructedQuestionText ?? '',
       ...?analysis?.aiTags,
       ...?analysis?.knowledgePoints,
       analysis?.finalAnswer ?? '',
@@ -2918,6 +3779,8 @@ class AiAnalysisService {
         !hasVolume && _hasPlaneGeometryAreaSignal(text);
     final hasFunctionEvaluation = _hasFunctionEvaluationSignal(text);
     final hasProportionalRelation = _hasProportionalRelationSignal(text);
+    final hasOrganicChemistry = _hasOrganicChemistrySignal(text);
+    final hasPhysicsCircuit = _hasPhysicsCircuitSignal(text);
     final hasSquarePerpendicularBisectorLength = !hasPlaneGeometryArea &&
         !hasVolume &&
         _hasSquarePerpendicularBisectorLengthSignal(text);
@@ -2990,6 +3853,22 @@ class AiAnalysisService {
         variant: _solidVolumeVariant(text),
       );
     }
+    if (hasOrganicChemistry) {
+      return const _ExerciseTopicProfile(
+        domain: _ExerciseDomain.organicChemistry,
+        object: _ExerciseObject.organicSynthesis,
+        methods: <_ExerciseMethod>{},
+        hasStrongSignal: true,
+      );
+    }
+    if (hasPhysicsCircuit) {
+      return const _ExerciseTopicProfile(
+        domain: _ExerciseDomain.physicsCircuit,
+        object: _ExerciseObject.circuit,
+        methods: <_ExerciseMethod>{},
+        hasStrongSignal: true,
+      );
+    }
     if (hasFunctionEvaluation) {
       return const _ExerciseTopicProfile(
         domain: _ExerciseDomain.functionEvaluation,
@@ -3049,6 +3928,71 @@ class AiAnalysisService {
 
   bool _hasAnySignal(String text, Iterable<String> needles) {
     return needles.any(text.contains);
+  }
+
+  bool _hasOrganicChemistrySignal(String text) {
+    final normalized = text.toLowerCase();
+    return _hasAnySignal(normalized, <String>[
+          '有机合成',
+          '合成路线',
+          '有机物',
+          '官能团',
+          '结构简式',
+          '同分异构',
+          'fries',
+          'beckmann',
+          '银镜',
+          '核磁',
+          '乙酸酐',
+          '苯酚',
+          '苯乙酮',
+          '苯胺',
+          '硝基',
+          '甲氧基',
+          '羟胺',
+          '肟',
+          '酰胺',
+          '酯化',
+          '重排',
+          'nh2oh',
+          'pd/hcl',
+          '浓硝酸',
+          '浓硫酸',
+        ]) &&
+        _hasAnySignal(normalized, <String>[
+          '化学',
+          '有机',
+          '苯',
+          'c6h',
+          'ch3',
+          'cho',
+          'cooh',
+          'nh2',
+          'naoh',
+          'hcl',
+          '反应',
+        ]);
+  }
+
+  bool _hasPhysicsCircuitSignal(String text) {
+    final normalized = text.toLowerCase();
+    return _hasAnySignal(normalized, <String>[
+      '物理电学',
+      '电路',
+      '电流',
+      '电压',
+      '电阻',
+      '欧姆',
+      '串联',
+      '并联',
+      '电表示数',
+      '电流表',
+      '电压表',
+      '滑动变阻器',
+      r'i=\frac{u}{r}',
+      r'\frac{u}{r}',
+      'i=u/r',
+    ]);
   }
 
   bool _hasSquareSymbol(String text) {
@@ -3853,8 +4797,8 @@ class AiAnalysisService {
     final divisor = _gcd(numerator, 8);
     final reducedNumerator = numerator ~/ divisor;
     final reducedDenominator = 8 ~/ divisor;
-    if (reducedDenominator == 1) return '${reducedNumerator}π';
-    return '${reducedNumerator}π/$reducedDenominator';
+    if (reducedDenominator == 1) return '$reducedNumeratorπ';
+    return '$reducedNumeratorπ/$reducedDenominator';
   }
 
   int _gcd(int a, int b) {
@@ -4077,14 +5021,6 @@ class AiAnalysisService {
         {'type': 'point', 'x': 0.5, 'y': 0.5, 'label': 'O', 'role': 'label'},
       ],
     };
-  }
-
-  Map<String, dynamic> _compositeSemicircleDiagram(
-    String top,
-    String bottom,
-    String height,
-  ) {
-    return _framedSemicircleDiagram(top, bottom, height);
   }
 
   Map<String, dynamic> _framedSemicircleDiagram(
@@ -4490,6 +5426,13 @@ class AiAnalysisService {
     AnalysisResult? analysis,
     String? sourceQuestionText,
   }) {
+    if (_shouldSuppressGeneratedExercises(
+      analysis,
+      sourceQuestionText: sourceQuestionText,
+    )) {
+      return const <GeneratedExercise>[];
+    }
+
     final now = DateTime.now();
     final profile = _buildExerciseTopicProfile(
       sourceQuestionText: sourceQuestionText,
@@ -4883,6 +5826,14 @@ class AiAnalysisService {
       return _defaultConeVolumeExercises(questionId, now);
     }
 
+    if (profile.domain == _ExerciseDomain.organicChemistry) {
+      return _defaultOrganicChemistryExercises(questionId, now);
+    }
+
+    if (profile.domain == _ExerciseDomain.physicsCircuit) {
+      return const <GeneratedExercise>[];
+    }
+
     if (profile.domain == _ExerciseDomain.functionEvaluation) {
       return <GeneratedExercise>[
         GeneratedExercise(
@@ -4924,16 +5875,129 @@ class AiAnalysisService {
       ];
     }
 
+    return const <GeneratedExercise>[];
+  }
+
+  bool _shouldSuppressGeneratedExercises(
+    AnalysisResult? analysis, {
+    String? sourceQuestionText,
+  }) {
+    if (analysis == null) return false;
+    return _isUnrecognizedQuestionAnalysis(
+          analysis,
+          sourceQuestionText: sourceQuestionText,
+        ) ||
+        _isAdvancedProofNeedsReviewAnalysis(
+          analysis,
+          sourceQuestionText: sourceQuestionText,
+        );
+  }
+
+  bool _isUnrecognizedQuestionAnalysis(
+    AnalysisResult analysis, {
+    String? sourceQuestionText,
+  }) {
+    final text = _exerciseDecisionText(analysis, sourceQuestionText)
+        .replaceAll(RegExp(r'\s+'), '');
+    final sourceLooksInstructionOnly = sourceQuestionText != null &&
+        _isInstructionOnlyImagePrompt(sourceQuestionText);
+    final hasMissingQuestionSignal = _hasAnySignal(text, <String>[
+      '无法确定',
+      '题干缺失',
+      '缺少图片',
+      '缺少原题',
+      '缺少题目',
+      '未提供可识别',
+      '没有可识别',
+      '无法还原完整题目',
+      '无法整理完整题干',
+      '无法准确识别',
+      '无法推出题目最终答案',
+      '重新识别图片',
+    ]);
+    if (!hasMissingQuestionSignal) return false;
+    return sourceLooksInstructionOnly ||
+        analysis.visualAssumptionStatus == VisualAssumptionStatus.needsReview;
+  }
+
+  bool _isAdvancedProofNeedsReviewAnalysis(
+    AnalysisResult analysis, {
+    String? sourceQuestionText,
+  }) {
+    final text = _exerciseDecisionText(analysis, sourceQuestionText)
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), '');
+    final needsReview = analysis.visualAssumptionStatus ==
+            VisualAssumptionStatus.needsReview ||
+        analysis.consistencyStatus == AnalysisConsistencyStatus.needsReview ||
+        _hasAnySignal(text, <String>[
+          '需要人工复核',
+          '建议结合原题标准答案核对',
+          '完整严谨性',
+        ]);
+    if (!needsReview) return false;
+
+    return _hasAnySignal(text, <String>[
+          '证明',
+          '单调递增',
+          '单调性证明',
+          '集合包含',
+          '抽象函数',
+          '反证',
+          r'd(x_0)',
+          'd(x0)',
+        ]) &&
+        _hasAnySignal(text, <String>[
+          '函数',
+          r'\mathbb{r}',
+          '定义域',
+          '包含关系',
+        ]);
+  }
+
+  String _exerciseDecisionText(
+    AnalysisResult analysis,
+    String? sourceQuestionText,
+  ) {
+    return <String>[
+      sourceQuestionText ?? '',
+      analysis.reconstructedQuestionText,
+      analysis.finalAnswer,
+      analysis.finalAnswerDerivation,
+      ...analysis.steps,
+      ...analysis.aiTags,
+      ...analysis.knowledgePoints,
+      analysis.mistakeReason,
+      analysis.studyAdvice,
+      analysis.consistencyNote,
+      analysis.visualAssumptions?.targetObject ?? '',
+      analysis.visualAssumptions?.targetQuestion ?? '',
+      ...?analysis.visualAssumptions?.solutionBasis,
+      ...?analysis.visualAssumptions?.uncertainItems,
+      analysis.visualAssumptions?.reviewReason ?? '',
+    ].join(' ');
+  }
+
+  List<GeneratedExercise> _defaultOrganicChemistryExercises(
+    String questionId,
+    DateTime now,
+  ) {
     return <GeneratedExercise>[
       GeneratedExercise(
         id: 'e1',
         questionId: questionId,
         generationMode: ExerciseGenerationMode.practice,
         difficulty: '简单',
-        question: 'x+1=4，求 x 的值',
-        options: const ['A. 2', 'B. 3', 'C. 4', 'D. 5'],
-        answer: 'B',
-        explanation: '移项得 x=4-1=3',
+        question: '苯酚与乙酸酐反应生成有机物 X，X 经 Fries 重排可生成羟基苯乙酮。X 的结构简式最可能是',
+        options: const [
+          r'A. \(\mathrm{C_6H_5OCOCH_3}\)',
+          r'B. \(\mathrm{C_6H_5COOCH_3}\)',
+          r'C. \(\mathrm{C_6H_5CH_2OH}\)',
+          r'D. \(\mathrm{C_6H_5CHO}\)',
+        ],
+        answer: 'A',
+        explanation:
+            r'苯酚与乙酸酐发生酯化生成乙酸苯酯，结构为 \(\mathrm{C_6H_5OCOCH_3}\)，其 Fries 重排可生成羟基苯乙酮。',
         createdAt: now,
         order: 0,
       ),
@@ -4942,10 +6006,17 @@ class AiAnalysisService {
         questionId: questionId,
         generationMode: ExerciseGenerationMode.practice,
         difficulty: '同级',
-        question: '2x=8，求 x 的值',
-        options: const ['A. 2', 'B. 3', 'C. 4', 'D. 6'],
-        answer: 'C',
-        explanation: '两边同时除以 2 得 x=4',
+        question:
+            r'某化合物 Y 的分子式为 \(\mathrm{C_8H_8O_2}\)，能发生银镜反应，且核磁共振氢谱有 4 组峰，峰面积比为 \(1:2:2:3\)。下列结构最符合的是',
+        options: const [
+          r'A. \(\mathrm{o{-}CH_3O{-}C_6H_4{-}CHO}\)',
+          r'B. \(\mathrm{p{-}CH_3O{-}C_6H_4{-}CHO}\)',
+          r'C. \(\mathrm{m{-}CH_3O{-}C_6H_4{-}CHO}\)',
+          r'D. \(\mathrm{C_6H_5COOCH_3}\)',
+        ],
+        answer: 'B',
+        explanation:
+            '对甲氧基苯甲醛含醛基，能发生银镜反应；对位二取代使苯环氢有两组各 2H，加上醛基 H 和甲氧基 H，共 4 组峰。',
         createdAt: now,
         order: 1,
       ),
@@ -4954,10 +6025,16 @@ class AiAnalysisService {
         questionId: questionId,
         generationMode: ExerciseGenerationMode.practice,
         difficulty: '提高',
-        question: '3x+2=11，求 x 的值',
-        options: const ['A. 2', 'B. 3', 'C. 4', 'D. 5'],
-        answer: 'B',
-        explanation: '先减 2 再除以 3: 3x=9, x=3',
+        question:
+            r'苯乙酮 \(\mathrm{C_6H_5COCH_3}\) 与 \(\mathrm{NH_2OH}\) 反应，先加成后脱水。脱水后主要产物的官能团结构应为',
+        options: const [
+          r'A. \(\mathrm{C_6H_5C(=N{-}OH)CH_3}\)',
+          r'B. \(\mathrm{C_6H_5CH(OH)CH_3}\)',
+          r'C. \(\mathrm{C_6H_5COONH_4}\)',
+          r'D. \(\mathrm{C_6H_5NHCOCH_3}\)',
+        ],
+        answer: 'A',
+        explanation: r'羰基化合物与羟胺反应先生成加成产物，再脱水形成肟，结构特征为 \(\mathrm{C=N{-}OH}\)。',
         createdAt: now,
         order: 2,
       ),
@@ -5155,6 +6232,14 @@ class _FakeAiAnalysisService extends AiAnalysisService {
   }
 
   @override
+  Future<List<String>> fetchAvailableModels(AiProviderConfig config) async {
+    return <String>['gpt-5.5'];
+  }
+
+  @override
+  Future<void> testConnection(AiProviderConfig config) async {}
+
+  @override
   Future<bool> judgeAnswer({
     required String question,
     required String userAnswer,
@@ -5162,6 +6247,26 @@ class _FakeAiAnalysisService extends AiAnalysisService {
     List<String>? options,
   }) async {
     return userAnswer == correctAnswer;
+  }
+
+  @override
+  Future<List<GeneratedExercise>> generateExercisesForQuestion(
+    QuestionRecord question,
+  ) async {
+    return extractGeneratedExercises(
+      question.analysisResult ?? _fakeResult(),
+      questionId: question.id,
+      sourceQuestionText: question.normalizedQuestionText,
+    );
+  }
+
+  @override
+  Future<String> answerQuestionFollowUp({
+    required QuestionRecord question,
+    required String userQuestion,
+    List<AiFollowUpMessage> history = const <AiFollowUpMessage>[],
+  }) async {
+    return '可以。关键是先看清题干条件，再沿着已有步骤追问：$userQuestion';
   }
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,7 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_coordinator.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_pipeline.dart';
 import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
+import 'package:smart_wrong_notebook/src/domain/models/analysis_job.dart';
 import 'package:smart_wrong_notebook/src/domain/models/ai_provider_config.dart';
 import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
@@ -63,7 +68,169 @@ class _FailingCandidateAiAnalysisService extends TestAiAnalysisService {
   }
 }
 
+class _DeferredQuestionAnalysisCoordinator
+    implements QuestionAnalysisCoordinator {
+  final Completer<QuestionRecord> completer = Completer<QuestionRecord>();
+
+  @override
+  Future<QuestionRecord> analyze(
+    QuestionRecord question, {
+    CandidateAnalysisProgress? onProgress,
+  }) {
+    return completer.future;
+  }
+}
+
+class _DeferredBackgroundQuestionAnalysisCoordinator
+    implements BackgroundQuestionAnalysisCoordinator {
+  final Completer<QuestionRecord> completer = Completer<QuestionRecord>();
+
+  @override
+  Future<QuestionAnalysisHandle> enqueue(QuestionRecord question) async {
+    return QuestionAnalysisHandle(
+      parentQuestionId: question.id,
+      firstPassJobId: '${question.id}:first-pass',
+    );
+  }
+
+  @override
+  Future<QuestionRecord> waitForResult(QuestionAnalysisHandle handle) {
+    return completer.future;
+  }
+
+  @override
+  Future<QuestionRecord> analyze(
+    QuestionRecord question, {
+    CandidateAnalysisProgress? onProgress,
+  }) async {
+    final handle = await enqueue(question);
+    return waitForResult(handle);
+  }
+
+  @override
+  QuestionAnalysisTaskSnapshot snapshotFromJob(
+    AnalysisJob job, {
+    Iterable<AnalysisJob> dependencyJobs = const <AnalysisJob>[],
+    Iterable<AnalysisJob> relatedJobs = const <AnalysisJob>[],
+  }) {
+    throw UnimplementedError();
+  }
+}
+
 void main() {
+  testWidgets(
+      'background queue exposes continue-recording action after enqueue',
+      (tester) async {
+    final settingsRepo = _TestSettingsRepository();
+    final coordinator = _DeferredBackgroundQuestionAnalysisCoordinator();
+    final container = ProviderContainer(
+      overrides: <Override>[
+        settingsRepositoryProvider.overrideWithValue(settingsRepo),
+        questionAnalysisCoordinatorProvider.overrideWithValue(coordinator),
+      ],
+    );
+    addTearDown(container.dispose);
+    final question = QuestionRecord.draft(
+      id: 'question-background',
+      imagePath: '/tmp/question.jpg',
+      subject: Subject.math,
+      recognizedText: '后台题目',
+    );
+    container.read(currentQuestionProvider.notifier).state = question;
+    final router = GoRouter(
+      initialLocation: '/analysis/loading',
+      routes: <GoRoute>[
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: Text('HOME_SCREEN')),
+        ),
+        GoRoute(
+          path: '/analysis/loading',
+          builder: (_, __) => const AnalysisLoadingScreen(),
+        ),
+        GoRoute(
+          path: '/analysis/result',
+          builder: (_, __) => const Scaffold(body: Text('RESULT_SCREEN')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pump();
+
+    expect(find.text('继续录题'), findsOneWidget);
+    await tester.tap(find.text('继续录题'));
+    await tester.pumpAndSettle();
+    expect(find.text('HOME_SCREEN'), findsOneWidget);
+
+    coordinator.completer.complete(question.copyWith(
+      contentStatus: ContentStatus.ready,
+    ));
+  });
+
+  testWidgets('completed stale analysis does not replace a newer question',
+      (tester) async {
+    final settingsRepo = _TestSettingsRepository();
+    final coordinator = _DeferredQuestionAnalysisCoordinator();
+    final container = ProviderContainer(
+      overrides: <Override>[
+        settingsRepositoryProvider.overrideWithValue(settingsRepo),
+        questionAnalysisCoordinatorProvider.overrideWithValue(coordinator),
+      ],
+    );
+    addTearDown(container.dispose);
+    final first = QuestionRecord.draft(
+      id: 'question-1',
+      imagePath: '/tmp/first.jpg',
+      subject: Subject.math,
+      recognizedText: '第一题',
+    );
+    final second = QuestionRecord.draft(
+      id: 'question-2',
+      imagePath: '/tmp/second.jpg',
+      subject: Subject.math,
+      recognizedText: '第二题',
+    );
+    container.read(currentQuestionProvider.notifier).state = first;
+
+    final router = GoRouter(
+      initialLocation: '/analysis/loading',
+      routes: <GoRoute>[
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: Text('HOME_SCREEN')),
+        ),
+        GoRoute(
+          path: '/analysis/loading',
+          builder: (_, __) => const AnalysisLoadingScreen(),
+        ),
+        GoRoute(
+          path: '/analysis/result',
+          builder: (_, __) => const Scaffold(body: Text('RESULT_SCREEN')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pump();
+
+    container.read(currentQuestionProvider.notifier).state = second;
+    router.go('/');
+    await tester.pumpAndSettle();
+    coordinator.completer.complete(first.copyWith(
+      contentStatus: ContentStatus.ready,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('HOME_SCREEN'), findsOneWidget);
+    expect(container.read(currentQuestionProvider)?.id, 'question-2');
+  });
+
   testWidgets('loading screen extracts before analysis when text is empty',
       (tester) async {
     final settingsRepo = _TestSettingsRepository();
@@ -434,7 +601,8 @@ void main() {
     expect(
         updated.candidateAnalyses.first.analysisResult!.finalAnswer, '第一题答案');
     expect(updated.candidateAnalyses.last.analysisResult!.finalAnswer, '第二题答案');
-    expect(updated.savedExercises, isNotEmpty);
+    expect(updated.savedExercises, isEmpty);
+    expect(updated.candidateAnalyses.first.savedExercises, isEmpty);
     expect(updated.analysisResult?.finalAnswer, '第一题答案');
   });
 

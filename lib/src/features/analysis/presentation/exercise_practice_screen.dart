@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
+import 'package:smart_wrong_notebook/src/domain/services/exercise_round_service.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/widgets/geometry_diagram_widget.dart';
 import 'package:smart_wrong_notebook/src/shared/widgets/math_content_view.dart';
 
@@ -24,6 +25,7 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
   String? _exerciseSourceVersion;
   bool _isJudging = false;
   bool _showCompletion = false;
+  bool _isGeneratingNextRound = false;
   final TextEditingController _freeInputController = TextEditingController();
 
   @override
@@ -516,9 +518,23 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
                 ),
               ),
               FilledButton.icon(
-                onPressed: () => _continuePractice(current),
-                icon: const Icon(CupertinoIcons.arrow_clockwise),
-                label: const Text('继续练习'),
+                onPressed: _isGeneratingNextRound
+                    ? null
+                    : isAnalysisSource
+                        ? () => _continuePractice(current)
+                        : () => _generateNextPracticeRound(current),
+                icon: _isGeneratingNextRound
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(CupertinoIcons.arrow_clockwise),
+                label: Text(_isGeneratingNextRound
+                    ? '正在生成...'
+                    : isAnalysisSource
+                        ? '再练一遍'
+                        : '再生成一组'),
                 style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50)),
               ),
@@ -554,6 +570,52 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
       }
     }
     return current.savedExercises;
+  }
+
+  Future<void> _generateNextPracticeRound(QuestionRecord question) async {
+    if (_isGeneratingNextRound) return;
+    final practiceContext = ref.read(currentPracticeContextProvider);
+    final existing = _practiceExercises(question, practiceContext);
+    setState(() => _isGeneratingNextRound = true);
+
+    try {
+      final exercises = await ref
+          .read(aiLearningTaskCoordinatorProvider)
+          .generateExercisesForQuestion(question, forceNew: true);
+      if (!mounted) return;
+
+      if (exercises.length <= existing.length) {
+        setState(() => _isGeneratingNextRound = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂未生成新的练习题，请稍后重试')),
+        );
+        return;
+      }
+
+      final latest =
+          await ref.read(questionRepositoryProvider).getById(question.id);
+      final updated = (latest ?? question).copyWith(savedExercises: exercises);
+      await ref.read(questionRepositoryProvider).update(updated);
+      invalidateQuestionList(ref);
+
+      final nextRound = latestExerciseRound(exercises);
+      _exerciseSourceVersion = _exerciseSourceVersionOf(
+          _practiceExercises(updated, practiceContext));
+      ref.read(currentQuestionProvider.notifier).state = updated;
+
+      setState(() {
+        _exercises = nextRound;
+        _index = 0;
+        _showCompletion = false;
+        _isGeneratingNextRound = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isGeneratingNextRound = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('再生成一组失败：$e')),
+      );
+    }
   }
 
   String _exerciseSourceVersionOf(List<GeneratedExercise> exercises) {
@@ -728,8 +790,8 @@ class _ExercisePracticeState extends ConsumerState<ExercisePracticeScreen> {
         return exercise.userAnswer == exercise.answer;
       }
 
-      final service = ref.read(aiAnalysisServiceProvider);
-      final isCorrect = await service.judgeAnswer(
+      final coordinator = ref.read(aiLearningTaskCoordinatorProvider);
+      final isCorrect = await coordinator.judgeAnswer(
         question: exercise.question,
         userAnswer: exercise.userAnswer!,
         correctAnswer: exercise.answer,

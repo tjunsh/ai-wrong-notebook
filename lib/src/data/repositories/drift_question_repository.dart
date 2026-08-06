@@ -111,6 +111,9 @@ class DriftQuestionRepository implements QuestionRepository {
 
   @override
   Future<void> delete(String id) async {
+    await (_db.delete(_db.aiConversationMessages)
+          ..where((t) => t.questionId.equals(id)))
+        .go();
     await (_db.delete(_db.generatedExercises)
           ..where((t) => t.questionId.equals(id)))
         .go();
@@ -159,8 +162,8 @@ class DriftQuestionRepository implements QuestionRepository {
     return domain.QuestionRecord(
       id: row.id,
       imagePath: row.originalImagePath ?? '',
-      subject: Subject.values
-          .firstWhere((s) => s.name == row.subject, orElse: () => Subject.math),
+      subject: Subject.values.firstWhere((s) => s.name == row.subject,
+          orElse: () => Subject.unknown),
       extractedQuestionText: row.originalText,
       normalizedQuestionText: row.correctedText,
       contentFormat: domain.QuestionContentFormat.plain,

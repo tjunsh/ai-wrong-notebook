@@ -11,6 +11,6 @@ void main() {
     );
 
     expect(record.contentStatus.name, 'ready');
-    expect(record.savedExercises.length, 3);
+    expect(record.savedExercises, isEmpty);
   });
 }

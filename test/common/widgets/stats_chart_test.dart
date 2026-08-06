@@ -5,6 +5,33 @@ import 'package:smart_wrong_notebook/src/common/widgets/stats_chart.dart';
 
 void main() {
   group('StatsGrid', () {
+    testWidgets('forwards taps from all four statistic cards', (tester) async {
+      final tapped = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatsGrid(
+              total: 10,
+              todayNew: 2,
+              pending: 7,
+              mastered: 3,
+              onTotalTap: () => tapped.add('total'),
+              onTodayNewTap: () => tapped.add('today'),
+              onMasteredTap: () => tapped.add('mastered'),
+              onPendingTap: () => tapped.add('pending'),
+            ),
+          ),
+        ),
+      );
+
+      for (final label in <String>['题库总量', '今日新增', '已掌握', '待复习']) {
+        await tester.tap(find.text(label));
+        await tester.pump();
+      }
+
+      expect(tapped, <String>['total', 'today', 'mastered', 'pending']);
+    });
+
     testWidgets('displays all stat values correctly', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(

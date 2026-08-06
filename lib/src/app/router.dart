@@ -18,6 +18,7 @@ import 'package:smart_wrong_notebook/src/features/ocr/presentation/question_save
 import 'package:smart_wrong_notebook/src/features/ocr/presentation/question_split_confirmation_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_loading_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/analysis_result_screen.dart';
+import 'package:smart_wrong_notebook/src/features/analysis/presentation/question_text_correction_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/exercise_practice_screen.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/settings_repository.dart';
 
@@ -93,6 +94,10 @@ GoRouter buildRouter(SettingsRepository settingsRepo) {
       GoRoute(
           path: '/analysis/result',
           pageBuilder: (_, __) => _buildPage(const AnalysisResultScreen())),
+      GoRoute(
+          path: '/analysis/text-correction',
+          pageBuilder: (_, __) =>
+              _buildPage(const QuestionTextCorrectionScreen())),
       GoRoute(
           path: '/exercise/practice',
           pageBuilder: (_, __) => _buildPage(const ExercisePracticeScreen())),

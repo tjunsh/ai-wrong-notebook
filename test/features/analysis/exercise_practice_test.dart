@@ -3,13 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
 import 'package:smart_wrong_notebook/src/data/repositories/question_repository.dart';
+import 'package:smart_wrong_notebook/src/data/services/ai_learning_task_coordinator.dart';
 import 'package:smart_wrong_notebook/src/domain/models/content_status.dart';
+import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/generated_exercise.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_split_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
+import 'package:smart_wrong_notebook/src/domain/services/exercise_round_service.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/exercise_practice_screen.dart';
 import 'package:smart_wrong_notebook/src/features/analysis/presentation/widgets/geometry_diagram_widget.dart';
 import 'package:smart_wrong_notebook/src/features/ocr/presentation/question_split_confirmation_screen.dart';
@@ -76,6 +80,67 @@ Widget _buildApp(QuestionRecord question, InMemoryQuestionRepository repo,
   );
 }
 
+class _FakeLearningTaskCoordinator implements AiLearningTaskCoordinator {
+  @override
+  Future<String> answerQuestionFollowUp({
+    required QuestionRecord question,
+    required String userQuestion,
+    List<AiFollowUpMessage> history = const <AiFollowUpMessage>[],
+  }) async {
+    return 'fake follow-up answer';
+  }
+
+  @override
+  Future<List<GeneratedExercise>> generateExercisesForQuestion(
+    QuestionRecord question, {
+    bool forceNew = false,
+  }) async {
+    if (!forceNew) return question.savedExercises;
+    final now = DateTime.now();
+    final generated = <GeneratedExercise>[
+      GeneratedExercise(
+        id: 'new-exercise-1',
+        questionId: question.id,
+        generationMode: ExerciseGenerationMode.practice,
+        difficulty: '简单',
+        question: '3+3=?',
+        options: ['A. 5', 'B. 6', 'C. 7', 'D. 8'],
+        answer: 'B',
+        explanation: 'basic addition',
+        createdAt: now,
+        order: 0,
+      ),
+      GeneratedExercise(
+        id: 'new-exercise-2',
+        questionId: question.id,
+        generationMode: ExerciseGenerationMode.practice,
+        difficulty: '中等',
+        question: '4+4=?',
+        options: ['A. 6', 'B. 7', 'C. 8', 'D. 9'],
+        answer: 'C',
+        explanation: 'basic addition',
+        createdAt: now,
+        order: 1,
+      ),
+    ];
+    return appendGeneratedExerciseRound(
+      questionId: question.id,
+      existingExercises: question.savedExercises,
+      generatedExercises: generated,
+    );
+  }
+
+  @override
+  Future<bool> judgeAnswer({
+    required String question,
+    required String userAnswer,
+    required String correctAnswer,
+    List<String>? options,
+  }) async {
+    return userAnswer == correctAnswer;
+  }
+}
+
 GoRouter _practiceRouter() {
   return GoRouter(
     initialLocation: '/exercise/practice',
@@ -107,9 +172,6 @@ GoRouter _practiceRouter() {
 }
 
 void main() {
-  // TODO: Fix these tests to match actual UI
-  // The exercise options are displayed differently than expected
-
   testWidgets('displays first exercise on load', (tester) async {
     final repo = InMemoryQuestionRepository();
     final question = _makeQuestion();
@@ -147,7 +209,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('举一反三完成'), findsOneWidget);
-    expect(find.text('继续练习'), findsOneWidget);
+    expect(find.text('再生成一组'), findsOneWidget);
     expect(find.text('返回错题详情'), findsOneWidget);
     expect(find.text('保存这道题'), findsNothing);
     expect(find.text('本轮练习结果已保存到错题本'), findsOneWidget);
@@ -167,7 +229,14 @@ void main() {
     final question = _makeQuestion();
     await repo.saveDraft(question);
 
-    await tester.pumpWidget(_buildApp(question, repo));
+    await tester.pumpWidget(_buildApp(
+      question,
+      repo,
+      overrides: <Override>[
+        aiLearningTaskCoordinatorProvider
+            .overrideWithValue(_FakeLearningTaskCoordinator()),
+      ],
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('B'));
@@ -184,8 +253,8 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('完成练习'));
     await tester.pump();
-    await tester.tap(find.text('继续练习'));
-    await tester.pump();
+    await tester.tap(find.text('再生成一组'));
+    await tester.pumpAndSettle();
 
     expect(find.text('举一反三 1/2'), findsOneWidget);
     final saved = await repo.getById('q-1');
@@ -234,12 +303,28 @@ void main() {
           candidateId: 'candidate-0',
           order: 1,
           questionText: '第一题',
+          analysisResult: const AnalysisResult(
+            finalAnswer: '第一题答案',
+            steps: <String>['第一题步骤'],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
           savedExercises: _makeQuestion().savedExercises,
         ),
         CandidateAnalysisSnapshot(
           candidateId: 'candidate-1',
           order: 2,
           questionText: '第二题',
+          analysisResult: const AnalysisResult(
+            finalAnswer: '第二题答案',
+            steps: <String>['第二题步骤'],
+            aiTags: <String>[],
+            knowledgePoints: <String>[],
+            mistakeReason: '',
+            studyAdvice: '',
+          ),
           savedExercises: _makeQuestion().savedExercises,
         ),
       ],

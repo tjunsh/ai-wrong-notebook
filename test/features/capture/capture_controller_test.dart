@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_wrong_notebook/src/domain/models/subject.dart';
 import 'package:smart_wrong_notebook/src/features/capture/presentation/capture_controller.dart';
 
 void main() {
@@ -9,5 +10,6 @@ void main() {
 
     expect(draft.imagePath, '/app/images/raw.jpg');
     expect(draft.contentStatus.name, 'processing');
+    expect(draft.subject, Subject.unknown);
   });
 }

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/services/analysis_failure_log_service.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 
 class DataManagementScreen extends ConsumerWidget {
@@ -16,6 +17,8 @@ class DataManagementScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final questionsAsync = ref.watch(questionListProvider);
     final reviewLogsAsync = ref.watch(reviewLogListProvider);
+    final scanTaskCountAsync = ref.watch(scanTaskCountProvider);
+    final failedTaskCountAsync = ref.watch(failedAnalysisTaskCountProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -47,6 +50,44 @@ class DataManagementScreen extends ConsumerWidget {
                 error: (_, __) => Text('加载失败', style: _subtitleStyle(context)),
               ),
             ),
+            const SizedBox(height: 8),
+            _DataCard(
+              icon: CupertinoIcons.doc_text_search,
+              title: '扫题任务总量',
+              trailingWidget: scanTaskCountAsync.when(
+                data: (count) =>
+                    Text('$count 条', style: _trailingStyle(context)),
+                loading: () => const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                error: (_, __) => Text('加载失败', style: _subtitleStyle(context)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _DataCard(
+              icon: CupertinoIcons.exclamationmark_triangle,
+              iconColor: Colors.orange,
+              title: 'AI 失败任务',
+              subtitle: '导出脱敏日志，便于定位问题',
+              trailingWidget: failedTaskCountAsync.when(
+                data: (count) => Text(
+                  '$count 条',
+                  style: _trailingStyle(context),
+                ),
+                loading: () => const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                error: (_, __) => Text('加载失败', style: _subtitleStyle(context)),
+              ),
+              onTap: failedTaskCountAsync.valueOrNull == null ||
+                      failedTaskCountAsync.valueOrNull == 0
+                  ? null
+                  : () => _exportFailureLogs(context, ref),
+            ),
             const SizedBox(height: 16),
             _DataCard(
               icon: CupertinoIcons.arrow_up,
@@ -69,7 +110,7 @@ class DataManagementScreen extends ConsumerWidget {
               iconColor: Colors.red,
               title: '清空所有数据',
               titleColor: Colors.red,
-              subtitle: '删除所有错题和复习记录，不可恢复',
+              subtitle: '删除错题、复习记录和扫题任务，不可恢复',
               onTap: () => _confirmClearAll(context, ref, questions.length),
             ),
           ],
@@ -78,6 +119,57 @@ class DataManagementScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('加载失败: $e')),
       ),
     );
+  }
+
+  Future<void> _exportFailureLogs(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      final repository = ref.read(analysisJobRepositoryProvider);
+      if (repository == null) {
+        throw StateError('任务存储尚未初始化');
+      }
+      final jobs = await repository.listAll();
+      const service = AnalysisFailureLogService();
+      final failures = service.failedJobs(jobs);
+      if (failures.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('当前没有可导出的失败任务')),
+          );
+        }
+        return;
+      }
+
+      final dir = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${dir.path}/exports');
+      await exportDir.create(recursive: true);
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(RegExp(r'[:.]'), '-')
+          .replaceFirst('Z', '');
+      final file = File('${exportDir.path}/ai-failure-logs-$timestamp.json');
+      final payload = service.buildExportPayload(
+        jobs,
+        exportedAt: DateTime.now(),
+      );
+      await file.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(payload),
+      );
+
+      if (!context.mounted) return;
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '导出 ${failures.length} 条 AI 失败日志（已脱敏）',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导出失败日志失败: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _exportQuestions(
@@ -155,10 +247,14 @@ class DataManagementScreen extends ConsumerWidget {
     }
   }
 
-  void _confirmClearAll(BuildContext context, WidgetRef ref, int count) {
-    if (count == 0) {
+  Future<void> _confirmClearAll(
+      BuildContext context, WidgetRef ref, int questionCount) async {
+    final taskCount =
+        await ref.read(scanTaskLifecycleServiceProvider).countTasks();
+    if (!context.mounted) return;
+    if (questionCount == 0 && taskCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('题库为空，无需清空')),
+        const SnackBar(content: Text('没有可清空的数据')),
       );
       return;
     }
@@ -166,14 +262,16 @@ class DataManagementScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认清空'),
-        content: Text('确定要删除全部 $count 道错题及其复习记录吗？此操作不可恢复。'),
+        content: Text(
+          '确定要删除 $questionCount 道错题和 $taskCount 条扫题记录吗？此操作不可恢复。',
+        ),
         actions: <Widget>[
           TextButton(
               onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _clearAllData(ref, context);
+              _clearAllData(ref, context, taskCount: taskCount);
             },
             child: const Text('清空', style: TextStyle(color: Colors.red)),
           ),
@@ -182,15 +280,22 @@ class DataManagementScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _clearAllData(WidgetRef ref, BuildContext context) async {
+  Future<void> _clearAllData(
+    WidgetRef ref,
+    BuildContext context, {
+    required int taskCount,
+  }) async {
     final repo = ref.read(questionRepositoryProvider);
     final all = await repo.listAll();
+    await ref.read(scanTaskLifecycleServiceProvider).clearAllTasks();
     for (final q in all) {
       await repo.delete(q.id);
     }
     await ref.read(reviewLogRepositoryProvider).clear();
     invalidateQuestionList(ref);
+    ref.invalidate(scanTaskCountProvider);
     ref.read(currentQuestionProvider.notifier).state = null;
+    ref.read(currentQuestionSplitSessionProvider.notifier).state = null;
 
     try {
       for (final q in all) {
@@ -201,7 +306,9 @@ class DataManagementScreen extends ConsumerWidget {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已清空 ${all.length} 道错题')),
+        SnackBar(
+          content: Text('已清空 ${all.length} 道错题和 $taskCount 条扫题记录'),
+        ),
       );
     }
   }

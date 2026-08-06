@@ -2357,6 +2357,1649 @@ class SettingsEntriesCompanion extends UpdateCompanion<SettingsEntry> {
   }
 }
 
+class $AiConversationMessagesTable extends AiConversationMessages
+    with TableInfo<$AiConversationMessagesTable, AiConversationMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiConversationMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _questionIdMeta =
+      const VerificationMeta('questionId');
+  @override
+  late final GeneratedColumn<String> questionId = GeneratedColumn<String>(
+      'question_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES question_records (id)'));
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+      'role', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, questionId, role, content, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_conversation_messages';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AiConversationMessage> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('question_id')) {
+      context.handle(
+          _questionIdMeta,
+          questionId.isAcceptableOrUnknown(
+              data['question_id']!, _questionIdMeta));
+    } else if (isInserting) {
+      context.missing(_questionIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+          _roleMeta, role.isAcceptableOrUnknown(data['role']!, _roleMeta));
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiConversationMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiConversationMessage(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      questionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}question_id'])!,
+      role: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}role'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $AiConversationMessagesTable createAlias(String alias) {
+    return $AiConversationMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class AiConversationMessage extends DataClass
+    implements Insertable<AiConversationMessage> {
+  final String id;
+  final String questionId;
+  final String role;
+  final String content;
+  final DateTime createdAt;
+  const AiConversationMessage(
+      {required this.id,
+      required this.questionId,
+      required this.role,
+      required this.content,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['question_id'] = Variable<String>(questionId);
+    map['role'] = Variable<String>(role);
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AiConversationMessagesCompanion toCompanion(bool nullToAbsent) {
+    return AiConversationMessagesCompanion(
+      id: Value(id),
+      questionId: Value(questionId),
+      role: Value(role),
+      content: Value(content),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AiConversationMessage.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiConversationMessage(
+      id: serializer.fromJson<String>(json['id']),
+      questionId: serializer.fromJson<String>(json['questionId']),
+      role: serializer.fromJson<String>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'questionId': serializer.toJson<String>(questionId),
+      'role': serializer.toJson<String>(role),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AiConversationMessage copyWith(
+          {String? id,
+          String? questionId,
+          String? role,
+          String? content,
+          DateTime? createdAt}) =>
+      AiConversationMessage(
+        id: id ?? this.id,
+        questionId: questionId ?? this.questionId,
+        role: role ?? this.role,
+        content: content ?? this.content,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  AiConversationMessage copyWithCompanion(
+      AiConversationMessagesCompanion data) {
+    return AiConversationMessage(
+      id: data.id.present ? data.id.value : this.id,
+      questionId:
+          data.questionId.present ? data.questionId.value : this.questionId,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiConversationMessage(')
+          ..write('id: $id, ')
+          ..write('questionId: $questionId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, questionId, role, content, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiConversationMessage &&
+          other.id == this.id &&
+          other.questionId == this.questionId &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt);
+}
+
+class AiConversationMessagesCompanion
+    extends UpdateCompanion<AiConversationMessage> {
+  final Value<String> id;
+  final Value<String> questionId;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const AiConversationMessagesCompanion({
+    this.id = const Value.absent(),
+    this.questionId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiConversationMessagesCompanion.insert({
+    required String id,
+    required String questionId,
+    required String role,
+    required String content,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        questionId = Value(questionId),
+        role = Value(role),
+        content = Value(content),
+        createdAt = Value(createdAt);
+  static Insertable<AiConversationMessage> custom({
+    Expression<String>? id,
+    Expression<String>? questionId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (questionId != null) 'question_id': questionId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiConversationMessagesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? questionId,
+      Value<String>? role,
+      Value<String>? content,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return AiConversationMessagesCompanion(
+      id: id ?? this.id,
+      questionId: questionId ?? this.questionId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (questionId.present) {
+      map['question_id'] = Variable<String>(questionId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiConversationMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('questionId: $questionId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AnalysisJobsTable extends AnalysisJobs
+    with TableInfo<$AnalysisJobsTable, AnalysisJob> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AnalysisJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idempotencyKeyMeta =
+      const VerificationMeta('idempotencyKey');
+  @override
+  late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
+      'idempotency_key', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _parentQuestionIdMeta =
+      const VerificationMeta('parentQuestionId');
+  @override
+  late final GeneratedColumn<String> parentQuestionId = GeneratedColumn<String>(
+      'parent_question_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _taskTypeMeta =
+      const VerificationMeta('taskType');
+  @override
+  late final GeneratedColumn<String> taskType = GeneratedColumn<String>(
+      'task_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _workloadProfileMeta =
+      const VerificationMeta('workloadProfile');
+  @override
+  late final GeneratedColumn<String> workloadProfile = GeneratedColumn<String>(
+      'workload_profile', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _requiredCapabilitiesJsonMeta =
+      const VerificationMeta('requiredCapabilitiesJson');
+  @override
+  late final GeneratedColumn<String> requiredCapabilitiesJson =
+      GeneratedColumn<String>('required_capabilities_json', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _qualityPolicyMeta =
+      const VerificationMeta('qualityPolicy');
+  @override
+  late final GeneratedColumn<String> qualityPolicy = GeneratedColumn<String>(
+      'quality_policy', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _queuePriorityMeta =
+      const VerificationMeta('queuePriority');
+  @override
+  late final GeneratedColumn<String> queuePriority = GeneratedColumn<String>(
+      'queue_priority', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dependencyJobIdsJsonMeta =
+      const VerificationMeta('dependencyJobIdsJson');
+  @override
+  late final GeneratedColumn<String> dependencyJobIdsJson =
+      GeneratedColumn<String>('dependency_job_ids_json', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _modelRoleMeta =
+      const VerificationMeta('modelRole');
+  @override
+  late final GeneratedColumn<String> modelRole = GeneratedColumn<String>(
+      'model_role', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _requestedModelClassMeta =
+      const VerificationMeta('requestedModelClass');
+  @override
+  late final GeneratedColumn<String> requestedModelClass =
+      GeneratedColumn<String>('requested_model_class', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _requestedModelRoleMeta =
+      const VerificationMeta('requestedModelRole');
+  @override
+  late final GeneratedColumn<String> requestedModelRole =
+      GeneratedColumn<String>('requested_model_role', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _resolvedRouteIdMeta =
+      const VerificationMeta('resolvedRouteId');
+  @override
+  late final GeneratedColumn<String> resolvedRouteId = GeneratedColumn<String>(
+      'resolved_route_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _providerConfigIdMeta =
+      const VerificationMeta('providerConfigId');
+  @override
+  late final GeneratedColumn<String> providerConfigId = GeneratedColumn<String>(
+      'provider_config_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _modelNameMeta =
+      const VerificationMeta('modelName');
+  @override
+  late final GeneratedColumn<String> modelName = GeneratedColumn<String>(
+      'model_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _promptVersionMeta =
+      const VerificationMeta('promptVersion');
+  @override
+  late final GeneratedColumn<String> promptVersion = GeneratedColumn<String>(
+      'prompt_version', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _verifierIsIndependentMeta =
+      const VerificationMeta('verifierIsIndependent');
+  @override
+  late final GeneratedColumn<bool> verifierIsIndependent =
+      GeneratedColumn<bool>('verifier_is_independent', aliasedName, false,
+          type: DriftSqlType.bool,
+          requiredDuringInsert: false,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("verifier_is_independent" IN (0, 1))'),
+          defaultValue: const Constant(false));
+  static const VerificationMeta _payloadJsonMeta =
+      const VerificationMeta('payloadJson');
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+      'payload_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _attemptCountMeta =
+      const VerificationMeta('attemptCount');
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+      'attempt_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _maxAttemptsMeta =
+      const VerificationMeta('maxAttempts');
+  @override
+  late final GeneratedColumn<int> maxAttempts = GeneratedColumn<int>(
+      'max_attempts', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(2));
+  static const VerificationMeta _resultJsonMeta =
+      const VerificationMeta('resultJson');
+  @override
+  late final GeneratedColumn<String> resultJson = GeneratedColumn<String>(
+      'result_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _errorMessageMeta =
+      const VerificationMeta('errorMessage');
+  @override
+  late final GeneratedColumn<String> errorMessage = GeneratedColumn<String>(
+      'error_message', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _progressJsonMeta =
+      const VerificationMeta('progressJson');
+  @override
+  late final GeneratedColumn<String> progressJson = GeneratedColumn<String>(
+      'progress_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _startedAtMeta =
+      const VerificationMeta('startedAt');
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+      'started_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _completedAtMeta =
+      const VerificationMeta('completedAt');
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+      'completed_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        idempotencyKey,
+        parentQuestionId,
+        taskType,
+        workloadProfile,
+        requiredCapabilitiesJson,
+        qualityPolicy,
+        queuePriority,
+        dependencyJobIdsJson,
+        modelRole,
+        requestedModelClass,
+        requestedModelRole,
+        resolvedRouteId,
+        providerConfigId,
+        modelName,
+        promptVersion,
+        verifierIsIndependent,
+        payloadJson,
+        status,
+        attemptCount,
+        maxAttempts,
+        resultJson,
+        errorMessage,
+        progressJson,
+        createdAt,
+        updatedAt,
+        startedAt,
+        completedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'analysis_jobs';
+  @override
+  VerificationContext validateIntegrity(Insertable<AnalysisJob> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idempotency_key')) {
+      context.handle(
+          _idempotencyKeyMeta,
+          idempotencyKey.isAcceptableOrUnknown(
+              data['idempotency_key']!, _idempotencyKeyMeta));
+    } else if (isInserting) {
+      context.missing(_idempotencyKeyMeta);
+    }
+    if (data.containsKey('parent_question_id')) {
+      context.handle(
+          _parentQuestionIdMeta,
+          parentQuestionId.isAcceptableOrUnknown(
+              data['parent_question_id']!, _parentQuestionIdMeta));
+    } else if (isInserting) {
+      context.missing(_parentQuestionIdMeta);
+    }
+    if (data.containsKey('task_type')) {
+      context.handle(_taskTypeMeta,
+          taskType.isAcceptableOrUnknown(data['task_type']!, _taskTypeMeta));
+    } else if (isInserting) {
+      context.missing(_taskTypeMeta);
+    }
+    if (data.containsKey('workload_profile')) {
+      context.handle(
+          _workloadProfileMeta,
+          workloadProfile.isAcceptableOrUnknown(
+              data['workload_profile']!, _workloadProfileMeta));
+    } else if (isInserting) {
+      context.missing(_workloadProfileMeta);
+    }
+    if (data.containsKey('required_capabilities_json')) {
+      context.handle(
+          _requiredCapabilitiesJsonMeta,
+          requiredCapabilitiesJson.isAcceptableOrUnknown(
+              data['required_capabilities_json']!,
+              _requiredCapabilitiesJsonMeta));
+    } else if (isInserting) {
+      context.missing(_requiredCapabilitiesJsonMeta);
+    }
+    if (data.containsKey('quality_policy')) {
+      context.handle(
+          _qualityPolicyMeta,
+          qualityPolicy.isAcceptableOrUnknown(
+              data['quality_policy']!, _qualityPolicyMeta));
+    } else if (isInserting) {
+      context.missing(_qualityPolicyMeta);
+    }
+    if (data.containsKey('queue_priority')) {
+      context.handle(
+          _queuePriorityMeta,
+          queuePriority.isAcceptableOrUnknown(
+              data['queue_priority']!, _queuePriorityMeta));
+    } else if (isInserting) {
+      context.missing(_queuePriorityMeta);
+    }
+    if (data.containsKey('dependency_job_ids_json')) {
+      context.handle(
+          _dependencyJobIdsJsonMeta,
+          dependencyJobIdsJson.isAcceptableOrUnknown(
+              data['dependency_job_ids_json']!, _dependencyJobIdsJsonMeta));
+    } else if (isInserting) {
+      context.missing(_dependencyJobIdsJsonMeta);
+    }
+    if (data.containsKey('model_role')) {
+      context.handle(_modelRoleMeta,
+          modelRole.isAcceptableOrUnknown(data['model_role']!, _modelRoleMeta));
+    } else if (isInserting) {
+      context.missing(_modelRoleMeta);
+    }
+    if (data.containsKey('requested_model_class')) {
+      context.handle(
+          _requestedModelClassMeta,
+          requestedModelClass.isAcceptableOrUnknown(
+              data['requested_model_class']!, _requestedModelClassMeta));
+    } else if (isInserting) {
+      context.missing(_requestedModelClassMeta);
+    }
+    if (data.containsKey('requested_model_role')) {
+      context.handle(
+          _requestedModelRoleMeta,
+          requestedModelRole.isAcceptableOrUnknown(
+              data['requested_model_role']!, _requestedModelRoleMeta));
+    } else if (isInserting) {
+      context.missing(_requestedModelRoleMeta);
+    }
+    if (data.containsKey('resolved_route_id')) {
+      context.handle(
+          _resolvedRouteIdMeta,
+          resolvedRouteId.isAcceptableOrUnknown(
+              data['resolved_route_id']!, _resolvedRouteIdMeta));
+    } else if (isInserting) {
+      context.missing(_resolvedRouteIdMeta);
+    }
+    if (data.containsKey('provider_config_id')) {
+      context.handle(
+          _providerConfigIdMeta,
+          providerConfigId.isAcceptableOrUnknown(
+              data['provider_config_id']!, _providerConfigIdMeta));
+    } else if (isInserting) {
+      context.missing(_providerConfigIdMeta);
+    }
+    if (data.containsKey('model_name')) {
+      context.handle(_modelNameMeta,
+          modelName.isAcceptableOrUnknown(data['model_name']!, _modelNameMeta));
+    } else if (isInserting) {
+      context.missing(_modelNameMeta);
+    }
+    if (data.containsKey('prompt_version')) {
+      context.handle(
+          _promptVersionMeta,
+          promptVersion.isAcceptableOrUnknown(
+              data['prompt_version']!, _promptVersionMeta));
+    } else if (isInserting) {
+      context.missing(_promptVersionMeta);
+    }
+    if (data.containsKey('verifier_is_independent')) {
+      context.handle(
+          _verifierIsIndependentMeta,
+          verifierIsIndependent.isAcceptableOrUnknown(
+              data['verifier_is_independent']!, _verifierIsIndependentMeta));
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+          _payloadJsonMeta,
+          payloadJson.isAcceptableOrUnknown(
+              data['payload_json']!, _payloadJsonMeta));
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+          _attemptCountMeta,
+          attemptCount.isAcceptableOrUnknown(
+              data['attempt_count']!, _attemptCountMeta));
+    }
+    if (data.containsKey('max_attempts')) {
+      context.handle(
+          _maxAttemptsMeta,
+          maxAttempts.isAcceptableOrUnknown(
+              data['max_attempts']!, _maxAttemptsMeta));
+    }
+    if (data.containsKey('result_json')) {
+      context.handle(
+          _resultJsonMeta,
+          resultJson.isAcceptableOrUnknown(
+              data['result_json']!, _resultJsonMeta));
+    }
+    if (data.containsKey('error_message')) {
+      context.handle(
+          _errorMessageMeta,
+          errorMessage.isAcceptableOrUnknown(
+              data['error_message']!, _errorMessageMeta));
+    }
+    if (data.containsKey('progress_json')) {
+      context.handle(
+          _progressJsonMeta,
+          progressJson.isAcceptableOrUnknown(
+              data['progress_json']!, _progressJsonMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(_startedAtMeta,
+          startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta));
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+          _completedAtMeta,
+          completedAt.isAcceptableOrUnknown(
+              data['completed_at']!, _completedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AnalysisJob map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AnalysisJob(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idempotencyKey: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}idempotency_key'])!,
+      parentQuestionId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}parent_question_id'])!,
+      taskType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}task_type'])!,
+      workloadProfile: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}workload_profile'])!,
+      requiredCapabilitiesJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}required_capabilities_json'])!,
+      qualityPolicy: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}quality_policy'])!,
+      queuePriority: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}queue_priority'])!,
+      dependencyJobIdsJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}dependency_job_ids_json'])!,
+      modelRole: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}model_role'])!,
+      requestedModelClass: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}requested_model_class'])!,
+      requestedModelRole: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}requested_model_role'])!,
+      resolvedRouteId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}resolved_route_id'])!,
+      providerConfigId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}provider_config_id'])!,
+      modelName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}model_name'])!,
+      promptVersion: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}prompt_version'])!,
+      verifierIsIndependent: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool,
+          data['${effectivePrefix}verifier_is_independent'])!,
+      payloadJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payload_json'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      attemptCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}attempt_count'])!,
+      maxAttempts: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}max_attempts'])!,
+      resultJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}result_json']),
+      errorMessage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error_message']),
+      progressJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}progress_json']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      startedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}started_at']),
+      completedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}completed_at']),
+    );
+  }
+
+  @override
+  $AnalysisJobsTable createAlias(String alias) {
+    return $AnalysisJobsTable(attachedDatabase, alias);
+  }
+}
+
+class AnalysisJob extends DataClass implements Insertable<AnalysisJob> {
+  final String id;
+  final String idempotencyKey;
+  final String parentQuestionId;
+  final String taskType;
+  final String workloadProfile;
+  final String requiredCapabilitiesJson;
+  final String qualityPolicy;
+  final String queuePriority;
+  final String dependencyJobIdsJson;
+  final String modelRole;
+  final String requestedModelClass;
+  final String requestedModelRole;
+  final String resolvedRouteId;
+  final String providerConfigId;
+  final String modelName;
+  final String promptVersion;
+  final bool verifierIsIndependent;
+  final String payloadJson;
+  final String status;
+  final int attemptCount;
+  final int maxAttempts;
+  final String? resultJson;
+  final String? errorMessage;
+  final String? progressJson;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
+  const AnalysisJob(
+      {required this.id,
+      required this.idempotencyKey,
+      required this.parentQuestionId,
+      required this.taskType,
+      required this.workloadProfile,
+      required this.requiredCapabilitiesJson,
+      required this.qualityPolicy,
+      required this.queuePriority,
+      required this.dependencyJobIdsJson,
+      required this.modelRole,
+      required this.requestedModelClass,
+      required this.requestedModelRole,
+      required this.resolvedRouteId,
+      required this.providerConfigId,
+      required this.modelName,
+      required this.promptVersion,
+      required this.verifierIsIndependent,
+      required this.payloadJson,
+      required this.status,
+      required this.attemptCount,
+      required this.maxAttempts,
+      this.resultJson,
+      this.errorMessage,
+      this.progressJson,
+      required this.createdAt,
+      required this.updatedAt,
+      this.startedAt,
+      this.completedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idempotency_key'] = Variable<String>(idempotencyKey);
+    map['parent_question_id'] = Variable<String>(parentQuestionId);
+    map['task_type'] = Variable<String>(taskType);
+    map['workload_profile'] = Variable<String>(workloadProfile);
+    map['required_capabilities_json'] =
+        Variable<String>(requiredCapabilitiesJson);
+    map['quality_policy'] = Variable<String>(qualityPolicy);
+    map['queue_priority'] = Variable<String>(queuePriority);
+    map['dependency_job_ids_json'] = Variable<String>(dependencyJobIdsJson);
+    map['model_role'] = Variable<String>(modelRole);
+    map['requested_model_class'] = Variable<String>(requestedModelClass);
+    map['requested_model_role'] = Variable<String>(requestedModelRole);
+    map['resolved_route_id'] = Variable<String>(resolvedRouteId);
+    map['provider_config_id'] = Variable<String>(providerConfigId);
+    map['model_name'] = Variable<String>(modelName);
+    map['prompt_version'] = Variable<String>(promptVersion);
+    map['verifier_is_independent'] = Variable<bool>(verifierIsIndependent);
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['status'] = Variable<String>(status);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    map['max_attempts'] = Variable<int>(maxAttempts);
+    if (!nullToAbsent || resultJson != null) {
+      map['result_json'] = Variable<String>(resultJson);
+    }
+    if (!nullToAbsent || errorMessage != null) {
+      map['error_message'] = Variable<String>(errorMessage);
+    }
+    if (!nullToAbsent || progressJson != null) {
+      map['progress_json'] = Variable<String>(progressJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || startedAt != null) {
+      map['started_at'] = Variable<DateTime>(startedAt);
+    }
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    return map;
+  }
+
+  AnalysisJobsCompanion toCompanion(bool nullToAbsent) {
+    return AnalysisJobsCompanion(
+      id: Value(id),
+      idempotencyKey: Value(idempotencyKey),
+      parentQuestionId: Value(parentQuestionId),
+      taskType: Value(taskType),
+      workloadProfile: Value(workloadProfile),
+      requiredCapabilitiesJson: Value(requiredCapabilitiesJson),
+      qualityPolicy: Value(qualityPolicy),
+      queuePriority: Value(queuePriority),
+      dependencyJobIdsJson: Value(dependencyJobIdsJson),
+      modelRole: Value(modelRole),
+      requestedModelClass: Value(requestedModelClass),
+      requestedModelRole: Value(requestedModelRole),
+      resolvedRouteId: Value(resolvedRouteId),
+      providerConfigId: Value(providerConfigId),
+      modelName: Value(modelName),
+      promptVersion: Value(promptVersion),
+      verifierIsIndependent: Value(verifierIsIndependent),
+      payloadJson: Value(payloadJson),
+      status: Value(status),
+      attemptCount: Value(attemptCount),
+      maxAttempts: Value(maxAttempts),
+      resultJson: resultJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resultJson),
+      errorMessage: errorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorMessage),
+      progressJson: progressJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressJson),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      startedAt: startedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startedAt),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+    );
+  }
+
+  factory AnalysisJob.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AnalysisJob(
+      id: serializer.fromJson<String>(json['id']),
+      idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
+      parentQuestionId: serializer.fromJson<String>(json['parentQuestionId']),
+      taskType: serializer.fromJson<String>(json['taskType']),
+      workloadProfile: serializer.fromJson<String>(json['workloadProfile']),
+      requiredCapabilitiesJson:
+          serializer.fromJson<String>(json['requiredCapabilitiesJson']),
+      qualityPolicy: serializer.fromJson<String>(json['qualityPolicy']),
+      queuePriority: serializer.fromJson<String>(json['queuePriority']),
+      dependencyJobIdsJson:
+          serializer.fromJson<String>(json['dependencyJobIdsJson']),
+      modelRole: serializer.fromJson<String>(json['modelRole']),
+      requestedModelClass:
+          serializer.fromJson<String>(json['requestedModelClass']),
+      requestedModelRole:
+          serializer.fromJson<String>(json['requestedModelRole']),
+      resolvedRouteId: serializer.fromJson<String>(json['resolvedRouteId']),
+      providerConfigId: serializer.fromJson<String>(json['providerConfigId']),
+      modelName: serializer.fromJson<String>(json['modelName']),
+      promptVersion: serializer.fromJson<String>(json['promptVersion']),
+      verifierIsIndependent:
+          serializer.fromJson<bool>(json['verifierIsIndependent']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      status: serializer.fromJson<String>(json['status']),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      maxAttempts: serializer.fromJson<int>(json['maxAttempts']),
+      resultJson: serializer.fromJson<String?>(json['resultJson']),
+      errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      progressJson: serializer.fromJson<String?>(json['progressJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      startedAt: serializer.fromJson<DateTime?>(json['startedAt']),
+      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idempotencyKey': serializer.toJson<String>(idempotencyKey),
+      'parentQuestionId': serializer.toJson<String>(parentQuestionId),
+      'taskType': serializer.toJson<String>(taskType),
+      'workloadProfile': serializer.toJson<String>(workloadProfile),
+      'requiredCapabilitiesJson':
+          serializer.toJson<String>(requiredCapabilitiesJson),
+      'qualityPolicy': serializer.toJson<String>(qualityPolicy),
+      'queuePriority': serializer.toJson<String>(queuePriority),
+      'dependencyJobIdsJson': serializer.toJson<String>(dependencyJobIdsJson),
+      'modelRole': serializer.toJson<String>(modelRole),
+      'requestedModelClass': serializer.toJson<String>(requestedModelClass),
+      'requestedModelRole': serializer.toJson<String>(requestedModelRole),
+      'resolvedRouteId': serializer.toJson<String>(resolvedRouteId),
+      'providerConfigId': serializer.toJson<String>(providerConfigId),
+      'modelName': serializer.toJson<String>(modelName),
+      'promptVersion': serializer.toJson<String>(promptVersion),
+      'verifierIsIndependent': serializer.toJson<bool>(verifierIsIndependent),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'status': serializer.toJson<String>(status),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'maxAttempts': serializer.toJson<int>(maxAttempts),
+      'resultJson': serializer.toJson<String?>(resultJson),
+      'errorMessage': serializer.toJson<String?>(errorMessage),
+      'progressJson': serializer.toJson<String?>(progressJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'startedAt': serializer.toJson<DateTime?>(startedAt),
+      'completedAt': serializer.toJson<DateTime?>(completedAt),
+    };
+  }
+
+  AnalysisJob copyWith(
+          {String? id,
+          String? idempotencyKey,
+          String? parentQuestionId,
+          String? taskType,
+          String? workloadProfile,
+          String? requiredCapabilitiesJson,
+          String? qualityPolicy,
+          String? queuePriority,
+          String? dependencyJobIdsJson,
+          String? modelRole,
+          String? requestedModelClass,
+          String? requestedModelRole,
+          String? resolvedRouteId,
+          String? providerConfigId,
+          String? modelName,
+          String? promptVersion,
+          bool? verifierIsIndependent,
+          String? payloadJson,
+          String? status,
+          int? attemptCount,
+          int? maxAttempts,
+          Value<String?> resultJson = const Value.absent(),
+          Value<String?> errorMessage = const Value.absent(),
+          Value<String?> progressJson = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> startedAt = const Value.absent(),
+          Value<DateTime?> completedAt = const Value.absent()}) =>
+      AnalysisJob(
+        id: id ?? this.id,
+        idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+        parentQuestionId: parentQuestionId ?? this.parentQuestionId,
+        taskType: taskType ?? this.taskType,
+        workloadProfile: workloadProfile ?? this.workloadProfile,
+        requiredCapabilitiesJson:
+            requiredCapabilitiesJson ?? this.requiredCapabilitiesJson,
+        qualityPolicy: qualityPolicy ?? this.qualityPolicy,
+        queuePriority: queuePriority ?? this.queuePriority,
+        dependencyJobIdsJson: dependencyJobIdsJson ?? this.dependencyJobIdsJson,
+        modelRole: modelRole ?? this.modelRole,
+        requestedModelClass: requestedModelClass ?? this.requestedModelClass,
+        requestedModelRole: requestedModelRole ?? this.requestedModelRole,
+        resolvedRouteId: resolvedRouteId ?? this.resolvedRouteId,
+        providerConfigId: providerConfigId ?? this.providerConfigId,
+        modelName: modelName ?? this.modelName,
+        promptVersion: promptVersion ?? this.promptVersion,
+        verifierIsIndependent:
+            verifierIsIndependent ?? this.verifierIsIndependent,
+        payloadJson: payloadJson ?? this.payloadJson,
+        status: status ?? this.status,
+        attemptCount: attemptCount ?? this.attemptCount,
+        maxAttempts: maxAttempts ?? this.maxAttempts,
+        resultJson: resultJson.present ? resultJson.value : this.resultJson,
+        errorMessage:
+            errorMessage.present ? errorMessage.value : this.errorMessage,
+        progressJson:
+            progressJson.present ? progressJson.value : this.progressJson,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        startedAt: startedAt.present ? startedAt.value : this.startedAt,
+        completedAt: completedAt.present ? completedAt.value : this.completedAt,
+      );
+  AnalysisJob copyWithCompanion(AnalysisJobsCompanion data) {
+    return AnalysisJob(
+      id: data.id.present ? data.id.value : this.id,
+      idempotencyKey: data.idempotencyKey.present
+          ? data.idempotencyKey.value
+          : this.idempotencyKey,
+      parentQuestionId: data.parentQuestionId.present
+          ? data.parentQuestionId.value
+          : this.parentQuestionId,
+      taskType: data.taskType.present ? data.taskType.value : this.taskType,
+      workloadProfile: data.workloadProfile.present
+          ? data.workloadProfile.value
+          : this.workloadProfile,
+      requiredCapabilitiesJson: data.requiredCapabilitiesJson.present
+          ? data.requiredCapabilitiesJson.value
+          : this.requiredCapabilitiesJson,
+      qualityPolicy: data.qualityPolicy.present
+          ? data.qualityPolicy.value
+          : this.qualityPolicy,
+      queuePriority: data.queuePriority.present
+          ? data.queuePriority.value
+          : this.queuePriority,
+      dependencyJobIdsJson: data.dependencyJobIdsJson.present
+          ? data.dependencyJobIdsJson.value
+          : this.dependencyJobIdsJson,
+      modelRole: data.modelRole.present ? data.modelRole.value : this.modelRole,
+      requestedModelClass: data.requestedModelClass.present
+          ? data.requestedModelClass.value
+          : this.requestedModelClass,
+      requestedModelRole: data.requestedModelRole.present
+          ? data.requestedModelRole.value
+          : this.requestedModelRole,
+      resolvedRouteId: data.resolvedRouteId.present
+          ? data.resolvedRouteId.value
+          : this.resolvedRouteId,
+      providerConfigId: data.providerConfigId.present
+          ? data.providerConfigId.value
+          : this.providerConfigId,
+      modelName: data.modelName.present ? data.modelName.value : this.modelName,
+      promptVersion: data.promptVersion.present
+          ? data.promptVersion.value
+          : this.promptVersion,
+      verifierIsIndependent: data.verifierIsIndependent.present
+          ? data.verifierIsIndependent.value
+          : this.verifierIsIndependent,
+      payloadJson:
+          data.payloadJson.present ? data.payloadJson.value : this.payloadJson,
+      status: data.status.present ? data.status.value : this.status,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      maxAttempts:
+          data.maxAttempts.present ? data.maxAttempts.value : this.maxAttempts,
+      resultJson:
+          data.resultJson.present ? data.resultJson.value : this.resultJson,
+      errorMessage: data.errorMessage.present
+          ? data.errorMessage.value
+          : this.errorMessage,
+      progressJson: data.progressJson.present
+          ? data.progressJson.value
+          : this.progressJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      completedAt:
+          data.completedAt.present ? data.completedAt.value : this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnalysisJob(')
+          ..write('id: $id, ')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('parentQuestionId: $parentQuestionId, ')
+          ..write('taskType: $taskType, ')
+          ..write('workloadProfile: $workloadProfile, ')
+          ..write('requiredCapabilitiesJson: $requiredCapabilitiesJson, ')
+          ..write('qualityPolicy: $qualityPolicy, ')
+          ..write('queuePriority: $queuePriority, ')
+          ..write('dependencyJobIdsJson: $dependencyJobIdsJson, ')
+          ..write('modelRole: $modelRole, ')
+          ..write('requestedModelClass: $requestedModelClass, ')
+          ..write('requestedModelRole: $requestedModelRole, ')
+          ..write('resolvedRouteId: $resolvedRouteId, ')
+          ..write('providerConfigId: $providerConfigId, ')
+          ..write('modelName: $modelName, ')
+          ..write('promptVersion: $promptVersion, ')
+          ..write('verifierIsIndependent: $verifierIsIndependent, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('maxAttempts: $maxAttempts, ')
+          ..write('resultJson: $resultJson, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('progressJson: $progressJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        id,
+        idempotencyKey,
+        parentQuestionId,
+        taskType,
+        workloadProfile,
+        requiredCapabilitiesJson,
+        qualityPolicy,
+        queuePriority,
+        dependencyJobIdsJson,
+        modelRole,
+        requestedModelClass,
+        requestedModelRole,
+        resolvedRouteId,
+        providerConfigId,
+        modelName,
+        promptVersion,
+        verifierIsIndependent,
+        payloadJson,
+        status,
+        attemptCount,
+        maxAttempts,
+        resultJson,
+        errorMessage,
+        progressJson,
+        createdAt,
+        updatedAt,
+        startedAt,
+        completedAt
+      ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AnalysisJob &&
+          other.id == this.id &&
+          other.idempotencyKey == this.idempotencyKey &&
+          other.parentQuestionId == this.parentQuestionId &&
+          other.taskType == this.taskType &&
+          other.workloadProfile == this.workloadProfile &&
+          other.requiredCapabilitiesJson == this.requiredCapabilitiesJson &&
+          other.qualityPolicy == this.qualityPolicy &&
+          other.queuePriority == this.queuePriority &&
+          other.dependencyJobIdsJson == this.dependencyJobIdsJson &&
+          other.modelRole == this.modelRole &&
+          other.requestedModelClass == this.requestedModelClass &&
+          other.requestedModelRole == this.requestedModelRole &&
+          other.resolvedRouteId == this.resolvedRouteId &&
+          other.providerConfigId == this.providerConfigId &&
+          other.modelName == this.modelName &&
+          other.promptVersion == this.promptVersion &&
+          other.verifierIsIndependent == this.verifierIsIndependent &&
+          other.payloadJson == this.payloadJson &&
+          other.status == this.status &&
+          other.attemptCount == this.attemptCount &&
+          other.maxAttempts == this.maxAttempts &&
+          other.resultJson == this.resultJson &&
+          other.errorMessage == this.errorMessage &&
+          other.progressJson == this.progressJson &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.startedAt == this.startedAt &&
+          other.completedAt == this.completedAt);
+}
+
+class AnalysisJobsCompanion extends UpdateCompanion<AnalysisJob> {
+  final Value<String> id;
+  final Value<String> idempotencyKey;
+  final Value<String> parentQuestionId;
+  final Value<String> taskType;
+  final Value<String> workloadProfile;
+  final Value<String> requiredCapabilitiesJson;
+  final Value<String> qualityPolicy;
+  final Value<String> queuePriority;
+  final Value<String> dependencyJobIdsJson;
+  final Value<String> modelRole;
+  final Value<String> requestedModelClass;
+  final Value<String> requestedModelRole;
+  final Value<String> resolvedRouteId;
+  final Value<String> providerConfigId;
+  final Value<String> modelName;
+  final Value<String> promptVersion;
+  final Value<bool> verifierIsIndependent;
+  final Value<String> payloadJson;
+  final Value<String> status;
+  final Value<int> attemptCount;
+  final Value<int> maxAttempts;
+  final Value<String?> resultJson;
+  final Value<String?> errorMessage;
+  final Value<String?> progressJson;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> startedAt;
+  final Value<DateTime?> completedAt;
+  final Value<int> rowid;
+  const AnalysisJobsCompanion({
+    this.id = const Value.absent(),
+    this.idempotencyKey = const Value.absent(),
+    this.parentQuestionId = const Value.absent(),
+    this.taskType = const Value.absent(),
+    this.workloadProfile = const Value.absent(),
+    this.requiredCapabilitiesJson = const Value.absent(),
+    this.qualityPolicy = const Value.absent(),
+    this.queuePriority = const Value.absent(),
+    this.dependencyJobIdsJson = const Value.absent(),
+    this.modelRole = const Value.absent(),
+    this.requestedModelClass = const Value.absent(),
+    this.requestedModelRole = const Value.absent(),
+    this.resolvedRouteId = const Value.absent(),
+    this.providerConfigId = const Value.absent(),
+    this.modelName = const Value.absent(),
+    this.promptVersion = const Value.absent(),
+    this.verifierIsIndependent = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.status = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.maxAttempts = const Value.absent(),
+    this.resultJson = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.progressJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AnalysisJobsCompanion.insert({
+    required String id,
+    required String idempotencyKey,
+    required String parentQuestionId,
+    required String taskType,
+    required String workloadProfile,
+    required String requiredCapabilitiesJson,
+    required String qualityPolicy,
+    required String queuePriority,
+    required String dependencyJobIdsJson,
+    required String modelRole,
+    required String requestedModelClass,
+    required String requestedModelRole,
+    required String resolvedRouteId,
+    required String providerConfigId,
+    required String modelName,
+    required String promptVersion,
+    this.verifierIsIndependent = const Value.absent(),
+    required String payloadJson,
+    required String status,
+    this.attemptCount = const Value.absent(),
+    this.maxAttempts = const Value.absent(),
+    this.resultJson = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.progressJson = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.startedAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idempotencyKey = Value(idempotencyKey),
+        parentQuestionId = Value(parentQuestionId),
+        taskType = Value(taskType),
+        workloadProfile = Value(workloadProfile),
+        requiredCapabilitiesJson = Value(requiredCapabilitiesJson),
+        qualityPolicy = Value(qualityPolicy),
+        queuePriority = Value(queuePriority),
+        dependencyJobIdsJson = Value(dependencyJobIdsJson),
+        modelRole = Value(modelRole),
+        requestedModelClass = Value(requestedModelClass),
+        requestedModelRole = Value(requestedModelRole),
+        resolvedRouteId = Value(resolvedRouteId),
+        providerConfigId = Value(providerConfigId),
+        modelName = Value(modelName),
+        promptVersion = Value(promptVersion),
+        payloadJson = Value(payloadJson),
+        status = Value(status),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<AnalysisJob> custom({
+    Expression<String>? id,
+    Expression<String>? idempotencyKey,
+    Expression<String>? parentQuestionId,
+    Expression<String>? taskType,
+    Expression<String>? workloadProfile,
+    Expression<String>? requiredCapabilitiesJson,
+    Expression<String>? qualityPolicy,
+    Expression<String>? queuePriority,
+    Expression<String>? dependencyJobIdsJson,
+    Expression<String>? modelRole,
+    Expression<String>? requestedModelClass,
+    Expression<String>? requestedModelRole,
+    Expression<String>? resolvedRouteId,
+    Expression<String>? providerConfigId,
+    Expression<String>? modelName,
+    Expression<String>? promptVersion,
+    Expression<bool>? verifierIsIndependent,
+    Expression<String>? payloadJson,
+    Expression<String>? status,
+    Expression<int>? attemptCount,
+    Expression<int>? maxAttempts,
+    Expression<String>? resultJson,
+    Expression<String>? errorMessage,
+    Expression<String>? progressJson,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? completedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
+      if (parentQuestionId != null) 'parent_question_id': parentQuestionId,
+      if (taskType != null) 'task_type': taskType,
+      if (workloadProfile != null) 'workload_profile': workloadProfile,
+      if (requiredCapabilitiesJson != null)
+        'required_capabilities_json': requiredCapabilitiesJson,
+      if (qualityPolicy != null) 'quality_policy': qualityPolicy,
+      if (queuePriority != null) 'queue_priority': queuePriority,
+      if (dependencyJobIdsJson != null)
+        'dependency_job_ids_json': dependencyJobIdsJson,
+      if (modelRole != null) 'model_role': modelRole,
+      if (requestedModelClass != null)
+        'requested_model_class': requestedModelClass,
+      if (requestedModelRole != null)
+        'requested_model_role': requestedModelRole,
+      if (resolvedRouteId != null) 'resolved_route_id': resolvedRouteId,
+      if (providerConfigId != null) 'provider_config_id': providerConfigId,
+      if (modelName != null) 'model_name': modelName,
+      if (promptVersion != null) 'prompt_version': promptVersion,
+      if (verifierIsIndependent != null)
+        'verifier_is_independent': verifierIsIndependent,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (status != null) 'status': status,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (maxAttempts != null) 'max_attempts': maxAttempts,
+      if (resultJson != null) 'result_json': resultJson,
+      if (errorMessage != null) 'error_message': errorMessage,
+      if (progressJson != null) 'progress_json': progressJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (startedAt != null) 'started_at': startedAt,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AnalysisJobsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? idempotencyKey,
+      Value<String>? parentQuestionId,
+      Value<String>? taskType,
+      Value<String>? workloadProfile,
+      Value<String>? requiredCapabilitiesJson,
+      Value<String>? qualityPolicy,
+      Value<String>? queuePriority,
+      Value<String>? dependencyJobIdsJson,
+      Value<String>? modelRole,
+      Value<String>? requestedModelClass,
+      Value<String>? requestedModelRole,
+      Value<String>? resolvedRouteId,
+      Value<String>? providerConfigId,
+      Value<String>? modelName,
+      Value<String>? promptVersion,
+      Value<bool>? verifierIsIndependent,
+      Value<String>? payloadJson,
+      Value<String>? status,
+      Value<int>? attemptCount,
+      Value<int>? maxAttempts,
+      Value<String?>? resultJson,
+      Value<String?>? errorMessage,
+      Value<String?>? progressJson,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? startedAt,
+      Value<DateTime?>? completedAt,
+      Value<int>? rowid}) {
+    return AnalysisJobsCompanion(
+      id: id ?? this.id,
+      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      parentQuestionId: parentQuestionId ?? this.parentQuestionId,
+      taskType: taskType ?? this.taskType,
+      workloadProfile: workloadProfile ?? this.workloadProfile,
+      requiredCapabilitiesJson:
+          requiredCapabilitiesJson ?? this.requiredCapabilitiesJson,
+      qualityPolicy: qualityPolicy ?? this.qualityPolicy,
+      queuePriority: queuePriority ?? this.queuePriority,
+      dependencyJobIdsJson: dependencyJobIdsJson ?? this.dependencyJobIdsJson,
+      modelRole: modelRole ?? this.modelRole,
+      requestedModelClass: requestedModelClass ?? this.requestedModelClass,
+      requestedModelRole: requestedModelRole ?? this.requestedModelRole,
+      resolvedRouteId: resolvedRouteId ?? this.resolvedRouteId,
+      providerConfigId: providerConfigId ?? this.providerConfigId,
+      modelName: modelName ?? this.modelName,
+      promptVersion: promptVersion ?? this.promptVersion,
+      verifierIsIndependent:
+          verifierIsIndependent ?? this.verifierIsIndependent,
+      payloadJson: payloadJson ?? this.payloadJson,
+      status: status ?? this.status,
+      attemptCount: attemptCount ?? this.attemptCount,
+      maxAttempts: maxAttempts ?? this.maxAttempts,
+      resultJson: resultJson ?? this.resultJson,
+      errorMessage: errorMessage ?? this.errorMessage,
+      progressJson: progressJson ?? this.progressJson,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idempotencyKey.present) {
+      map['idempotency_key'] = Variable<String>(idempotencyKey.value);
+    }
+    if (parentQuestionId.present) {
+      map['parent_question_id'] = Variable<String>(parentQuestionId.value);
+    }
+    if (taskType.present) {
+      map['task_type'] = Variable<String>(taskType.value);
+    }
+    if (workloadProfile.present) {
+      map['workload_profile'] = Variable<String>(workloadProfile.value);
+    }
+    if (requiredCapabilitiesJson.present) {
+      map['required_capabilities_json'] =
+          Variable<String>(requiredCapabilitiesJson.value);
+    }
+    if (qualityPolicy.present) {
+      map['quality_policy'] = Variable<String>(qualityPolicy.value);
+    }
+    if (queuePriority.present) {
+      map['queue_priority'] = Variable<String>(queuePriority.value);
+    }
+    if (dependencyJobIdsJson.present) {
+      map['dependency_job_ids_json'] =
+          Variable<String>(dependencyJobIdsJson.value);
+    }
+    if (modelRole.present) {
+      map['model_role'] = Variable<String>(modelRole.value);
+    }
+    if (requestedModelClass.present) {
+      map['requested_model_class'] =
+          Variable<String>(requestedModelClass.value);
+    }
+    if (requestedModelRole.present) {
+      map['requested_model_role'] = Variable<String>(requestedModelRole.value);
+    }
+    if (resolvedRouteId.present) {
+      map['resolved_route_id'] = Variable<String>(resolvedRouteId.value);
+    }
+    if (providerConfigId.present) {
+      map['provider_config_id'] = Variable<String>(providerConfigId.value);
+    }
+    if (modelName.present) {
+      map['model_name'] = Variable<String>(modelName.value);
+    }
+    if (promptVersion.present) {
+      map['prompt_version'] = Variable<String>(promptVersion.value);
+    }
+    if (verifierIsIndependent.present) {
+      map['verifier_is_independent'] =
+          Variable<bool>(verifierIsIndependent.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (maxAttempts.present) {
+      map['max_attempts'] = Variable<int>(maxAttempts.value);
+    }
+    if (resultJson.present) {
+      map['result_json'] = Variable<String>(resultJson.value);
+    }
+    if (errorMessage.present) {
+      map['error_message'] = Variable<String>(errorMessage.value);
+    }
+    if (progressJson.present) {
+      map['progress_json'] = Variable<String>(progressJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnalysisJobsCompanion(')
+          ..write('id: $id, ')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('parentQuestionId: $parentQuestionId, ')
+          ..write('taskType: $taskType, ')
+          ..write('workloadProfile: $workloadProfile, ')
+          ..write('requiredCapabilitiesJson: $requiredCapabilitiesJson, ')
+          ..write('qualityPolicy: $qualityPolicy, ')
+          ..write('queuePriority: $queuePriority, ')
+          ..write('dependencyJobIdsJson: $dependencyJobIdsJson, ')
+          ..write('modelRole: $modelRole, ')
+          ..write('requestedModelClass: $requestedModelClass, ')
+          ..write('requestedModelRole: $requestedModelRole, ')
+          ..write('resolvedRouteId: $resolvedRouteId, ')
+          ..write('providerConfigId: $providerConfigId, ')
+          ..write('modelName: $modelName, ')
+          ..write('promptVersion: $promptVersion, ')
+          ..write('verifierIsIndependent: $verifierIsIndependent, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('maxAttempts: $maxAttempts, ')
+          ..write('resultJson: $resultJson, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('progressJson: $progressJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2367,12 +4010,21 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReviewLogsTable reviewLogs = $ReviewLogsTable(this);
   late final $SettingsEntriesTable settingsEntries =
       $SettingsEntriesTable(this);
+  late final $AiConversationMessagesTable aiConversationMessages =
+      $AiConversationMessagesTable(this);
+  late final $AnalysisJobsTable analysisJobs = $AnalysisJobsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [questionRecords, generatedExercises, reviewLogs, settingsEntries];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        questionRecords,
+        generatedExercises,
+        reviewLogs,
+        settingsEntries,
+        aiConversationMessages,
+        analysisJobs
+      ];
 }
 
 typedef $$QuestionRecordsTableCreateCompanionBuilder = QuestionRecordsCompanion
@@ -2455,6 +4107,25 @@ final class $$QuestionRecordsTableReferences extends BaseReferences<
         .filter((f) => f.questionId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_reviewLogsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$AiConversationMessagesTable,
+      List<AiConversationMessage>> _aiConversationMessagesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.aiConversationMessages,
+          aliasName: $_aliasNameGenerator(
+              db.questionRecords.id, db.aiConversationMessages.questionId));
+
+  $$AiConversationMessagesTableProcessedTableManager
+      get aiConversationMessagesRefs {
+    final manager = $$AiConversationMessagesTableTableManager(
+            $_db, $_db.aiConversationMessages)
+        .filter((f) => f.questionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_aiConversationMessagesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -2570,6 +4241,29 @@ class $$QuestionRecordsTableFilterComposer
               $removeJoinBuilderFromRootComposer:
                   $removeJoinBuilderFromRootComposer,
             ));
+    return f(composer);
+  }
+
+  Expression<bool> aiConversationMessagesRefs(
+      Expression<bool> Function($$AiConversationMessagesTableFilterComposer f)
+          f) {
+    final $$AiConversationMessagesTableFilterComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.aiConversationMessages,
+            getReferencedColumn: (t) => t.questionId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$AiConversationMessagesTableFilterComposer(
+                  $db: $db,
+                  $table: $db.aiConversationMessages,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
     return f(composer);
   }
 }
@@ -2759,6 +4453,29 @@ class $$QuestionRecordsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> aiConversationMessagesRefs<T extends Object>(
+      Expression<T> Function($$AiConversationMessagesTableAnnotationComposer a)
+          f) {
+    final $$AiConversationMessagesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.aiConversationMessages,
+            getReferencedColumn: (t) => t.questionId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$AiConversationMessagesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.aiConversationMessages,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$QuestionRecordsTableTableManager extends RootTableManager<
@@ -2773,7 +4490,9 @@ class $$QuestionRecordsTableTableManager extends RootTableManager<
     (QuestionRecord, $$QuestionRecordsTableReferences),
     QuestionRecord,
     PrefetchHooks Function(
-        {bool generatedExercisesRefs, bool reviewLogsRefs})> {
+        {bool generatedExercisesRefs,
+        bool reviewLogsRefs,
+        bool aiConversationMessagesRefs})> {
   $$QuestionRecordsTableTableManager(
       _$AppDatabase db, $QuestionRecordsTable table)
       : super(TableManagerState(
@@ -2880,12 +4599,15 @@ class $$QuestionRecordsTableTableManager extends RootTableManager<
                   ))
               .toList(),
           prefetchHooksCallback: (
-              {generatedExercisesRefs = false, reviewLogsRefs = false}) {
+              {generatedExercisesRefs = false,
+              reviewLogsRefs = false,
+              aiConversationMessagesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (generatedExercisesRefs) db.generatedExercises,
-                if (reviewLogsRefs) db.reviewLogs
+                if (reviewLogsRefs) db.reviewLogs,
+                if (aiConversationMessagesRefs) db.aiConversationMessages
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -2915,6 +4637,19 @@ class $$QuestionRecordsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.questionId == item.id),
+                        typedResults: items),
+                  if (aiConversationMessagesRefs)
+                    await $_getPrefetchedData<QuestionRecord,
+                            $QuestionRecordsTable, AiConversationMessage>(
+                        currentTable: table,
+                        referencedTable: $$QuestionRecordsTableReferences
+                            ._aiConversationMessagesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$QuestionRecordsTableReferences(db, table, p0)
+                                .aiConversationMessagesRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.questionId == item.id),
                         typedResults: items)
                 ];
               },
@@ -2934,7 +4669,10 @@ typedef $$QuestionRecordsTableProcessedTableManager = ProcessedTableManager<
     $$QuestionRecordsTableUpdateCompanionBuilder,
     (QuestionRecord, $$QuestionRecordsTableReferences),
     QuestionRecord,
-    PrefetchHooks Function({bool generatedExercisesRefs, bool reviewLogsRefs})>;
+    PrefetchHooks Function(
+        {bool generatedExercisesRefs,
+        bool reviewLogsRefs,
+        bool aiConversationMessagesRefs})>;
 typedef $$GeneratedExercisesTableCreateCompanionBuilder
     = GeneratedExercisesCompanion Function({
   required String id,
@@ -3831,6 +5569,833 @@ typedef $$SettingsEntriesTableProcessedTableManager = ProcessedTableManager<
     ),
     SettingsEntry,
     PrefetchHooks Function()>;
+typedef $$AiConversationMessagesTableCreateCompanionBuilder
+    = AiConversationMessagesCompanion Function({
+  required String id,
+  required String questionId,
+  required String role,
+  required String content,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$AiConversationMessagesTableUpdateCompanionBuilder
+    = AiConversationMessagesCompanion Function({
+  Value<String> id,
+  Value<String> questionId,
+  Value<String> role,
+  Value<String> content,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+final class $$AiConversationMessagesTableReferences extends BaseReferences<
+    _$AppDatabase, $AiConversationMessagesTable, AiConversationMessage> {
+  $$AiConversationMessagesTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $QuestionRecordsTable _questionIdTable(_$AppDatabase db) =>
+      db.questionRecords.createAlias($_aliasNameGenerator(
+          db.aiConversationMessages.questionId, db.questionRecords.id));
+
+  $$QuestionRecordsTableProcessedTableManager get questionId {
+    final $_column = $_itemColumn<String>('question_id')!;
+
+    final manager =
+        $$QuestionRecordsTableTableManager($_db, $_db.questionRecords)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_questionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$AiConversationMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $AiConversationMessagesTable> {
+  $$AiConversationMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  $$QuestionRecordsTableFilterComposer get questionId {
+    final $$QuestionRecordsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.questionId,
+        referencedTable: $db.questionRecords,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuestionRecordsTableFilterComposer(
+              $db: $db,
+              $table: $db.questionRecords,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AiConversationMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiConversationMessagesTable> {
+  $$AiConversationMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  $$QuestionRecordsTableOrderingComposer get questionId {
+    final $$QuestionRecordsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.questionId,
+        referencedTable: $db.questionRecords,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuestionRecordsTableOrderingComposer(
+              $db: $db,
+              $table: $db.questionRecords,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AiConversationMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiConversationMessagesTable> {
+  $$AiConversationMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$QuestionRecordsTableAnnotationComposer get questionId {
+    final $$QuestionRecordsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.questionId,
+        referencedTable: $db.questionRecords,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuestionRecordsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.questionRecords,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AiConversationMessagesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AiConversationMessagesTable,
+    AiConversationMessage,
+    $$AiConversationMessagesTableFilterComposer,
+    $$AiConversationMessagesTableOrderingComposer,
+    $$AiConversationMessagesTableAnnotationComposer,
+    $$AiConversationMessagesTableCreateCompanionBuilder,
+    $$AiConversationMessagesTableUpdateCompanionBuilder,
+    (AiConversationMessage, $$AiConversationMessagesTableReferences),
+    AiConversationMessage,
+    PrefetchHooks Function({bool questionId})> {
+  $$AiConversationMessagesTableTableManager(
+      _$AppDatabase db, $AiConversationMessagesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiConversationMessagesTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiConversationMessagesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiConversationMessagesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> questionId = const Value.absent(),
+            Value<String> role = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AiConversationMessagesCompanion(
+            id: id,
+            questionId: questionId,
+            role: role,
+            content: content,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String questionId,
+            required String role,
+            required String content,
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AiConversationMessagesCompanion.insert(
+            id: id,
+            questionId: questionId,
+            role: role,
+            content: content,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$AiConversationMessagesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({questionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (questionId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.questionId,
+                    referencedTable: $$AiConversationMessagesTableReferences
+                        ._questionIdTable(db),
+                    referencedColumn: $$AiConversationMessagesTableReferences
+                        ._questionIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$AiConversationMessagesTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $AiConversationMessagesTable,
+        AiConversationMessage,
+        $$AiConversationMessagesTableFilterComposer,
+        $$AiConversationMessagesTableOrderingComposer,
+        $$AiConversationMessagesTableAnnotationComposer,
+        $$AiConversationMessagesTableCreateCompanionBuilder,
+        $$AiConversationMessagesTableUpdateCompanionBuilder,
+        (AiConversationMessage, $$AiConversationMessagesTableReferences),
+        AiConversationMessage,
+        PrefetchHooks Function({bool questionId})>;
+typedef $$AnalysisJobsTableCreateCompanionBuilder = AnalysisJobsCompanion
+    Function({
+  required String id,
+  required String idempotencyKey,
+  required String parentQuestionId,
+  required String taskType,
+  required String workloadProfile,
+  required String requiredCapabilitiesJson,
+  required String qualityPolicy,
+  required String queuePriority,
+  required String dependencyJobIdsJson,
+  required String modelRole,
+  required String requestedModelClass,
+  required String requestedModelRole,
+  required String resolvedRouteId,
+  required String providerConfigId,
+  required String modelName,
+  required String promptVersion,
+  Value<bool> verifierIsIndependent,
+  required String payloadJson,
+  required String status,
+  Value<int> attemptCount,
+  Value<int> maxAttempts,
+  Value<String?> resultJson,
+  Value<String?> errorMessage,
+  Value<String?> progressJson,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> startedAt,
+  Value<DateTime?> completedAt,
+  Value<int> rowid,
+});
+typedef $$AnalysisJobsTableUpdateCompanionBuilder = AnalysisJobsCompanion
+    Function({
+  Value<String> id,
+  Value<String> idempotencyKey,
+  Value<String> parentQuestionId,
+  Value<String> taskType,
+  Value<String> workloadProfile,
+  Value<String> requiredCapabilitiesJson,
+  Value<String> qualityPolicy,
+  Value<String> queuePriority,
+  Value<String> dependencyJobIdsJson,
+  Value<String> modelRole,
+  Value<String> requestedModelClass,
+  Value<String> requestedModelRole,
+  Value<String> resolvedRouteId,
+  Value<String> providerConfigId,
+  Value<String> modelName,
+  Value<String> promptVersion,
+  Value<bool> verifierIsIndependent,
+  Value<String> payloadJson,
+  Value<String> status,
+  Value<int> attemptCount,
+  Value<int> maxAttempts,
+  Value<String?> resultJson,
+  Value<String?> errorMessage,
+  Value<String?> progressJson,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> startedAt,
+  Value<DateTime?> completedAt,
+  Value<int> rowid,
+});
+
+class $$AnalysisJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $AnalysisJobsTable> {
+  $$AnalysisJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentQuestionId => $composableBuilder(
+      column: $table.parentQuestionId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taskType => $composableBuilder(
+      column: $table.taskType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get workloadProfile => $composableBuilder(
+      column: $table.workloadProfile,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get requiredCapabilitiesJson => $composableBuilder(
+      column: $table.requiredCapabilitiesJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get qualityPolicy => $composableBuilder(
+      column: $table.qualityPolicy, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get queuePriority => $composableBuilder(
+      column: $table.queuePriority, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dependencyJobIdsJson => $composableBuilder(
+      column: $table.dependencyJobIdsJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get modelRole => $composableBuilder(
+      column: $table.modelRole, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get requestedModelClass => $composableBuilder(
+      column: $table.requestedModelClass,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get requestedModelRole => $composableBuilder(
+      column: $table.requestedModelRole,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get resolvedRouteId => $composableBuilder(
+      column: $table.resolvedRouteId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get providerConfigId => $composableBuilder(
+      column: $table.providerConfigId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get modelName => $composableBuilder(
+      column: $table.modelName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get promptVersion => $composableBuilder(
+      column: $table.promptVersion, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get verifierIsIndependent => $composableBuilder(
+      column: $table.verifierIsIndependent,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get payloadJson => $composableBuilder(
+      column: $table.payloadJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+      column: $table.attemptCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get maxAttempts => $composableBuilder(
+      column: $table.maxAttempts, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get resultJson => $composableBuilder(
+      column: $table.resultJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get errorMessage => $composableBuilder(
+      column: $table.errorMessage, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get progressJson => $composableBuilder(
+      column: $table.progressJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+      column: $table.startedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+      column: $table.completedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AnalysisJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AnalysisJobsTable> {
+  $$AnalysisJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get parentQuestionId => $composableBuilder(
+      column: $table.parentQuestionId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taskType => $composableBuilder(
+      column: $table.taskType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get workloadProfile => $composableBuilder(
+      column: $table.workloadProfile,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get requiredCapabilitiesJson => $composableBuilder(
+      column: $table.requiredCapabilitiesJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get qualityPolicy => $composableBuilder(
+      column: $table.qualityPolicy,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get queuePriority => $composableBuilder(
+      column: $table.queuePriority,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dependencyJobIdsJson => $composableBuilder(
+      column: $table.dependencyJobIdsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get modelRole => $composableBuilder(
+      column: $table.modelRole, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get requestedModelClass => $composableBuilder(
+      column: $table.requestedModelClass,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get requestedModelRole => $composableBuilder(
+      column: $table.requestedModelRole,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get resolvedRouteId => $composableBuilder(
+      column: $table.resolvedRouteId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get providerConfigId => $composableBuilder(
+      column: $table.providerConfigId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get modelName => $composableBuilder(
+      column: $table.modelName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get promptVersion => $composableBuilder(
+      column: $table.promptVersion,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get verifierIsIndependent => $composableBuilder(
+      column: $table.verifierIsIndependent,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payloadJson => $composableBuilder(
+      column: $table.payloadJson, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+      column: $table.attemptCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get maxAttempts => $composableBuilder(
+      column: $table.maxAttempts, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get resultJson => $composableBuilder(
+      column: $table.resultJson, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get errorMessage => $composableBuilder(
+      column: $table.errorMessage,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get progressJson => $composableBuilder(
+      column: $table.progressJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+      column: $table.startedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+      column: $table.completedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AnalysisJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AnalysisJobsTable> {
+  $$AnalysisJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey, builder: (column) => column);
+
+  GeneratedColumn<String> get parentQuestionId => $composableBuilder(
+      column: $table.parentQuestionId, builder: (column) => column);
+
+  GeneratedColumn<String> get taskType =>
+      $composableBuilder(column: $table.taskType, builder: (column) => column);
+
+  GeneratedColumn<String> get workloadProfile => $composableBuilder(
+      column: $table.workloadProfile, builder: (column) => column);
+
+  GeneratedColumn<String> get requiredCapabilitiesJson => $composableBuilder(
+      column: $table.requiredCapabilitiesJson, builder: (column) => column);
+
+  GeneratedColumn<String> get qualityPolicy => $composableBuilder(
+      column: $table.qualityPolicy, builder: (column) => column);
+
+  GeneratedColumn<String> get queuePriority => $composableBuilder(
+      column: $table.queuePriority, builder: (column) => column);
+
+  GeneratedColumn<String> get dependencyJobIdsJson => $composableBuilder(
+      column: $table.dependencyJobIdsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get modelRole =>
+      $composableBuilder(column: $table.modelRole, builder: (column) => column);
+
+  GeneratedColumn<String> get requestedModelClass => $composableBuilder(
+      column: $table.requestedModelClass, builder: (column) => column);
+
+  GeneratedColumn<String> get requestedModelRole => $composableBuilder(
+      column: $table.requestedModelRole, builder: (column) => column);
+
+  GeneratedColumn<String> get resolvedRouteId => $composableBuilder(
+      column: $table.resolvedRouteId, builder: (column) => column);
+
+  GeneratedColumn<String> get providerConfigId => $composableBuilder(
+      column: $table.providerConfigId, builder: (column) => column);
+
+  GeneratedColumn<String> get modelName =>
+      $composableBuilder(column: $table.modelName, builder: (column) => column);
+
+  GeneratedColumn<String> get promptVersion => $composableBuilder(
+      column: $table.promptVersion, builder: (column) => column);
+
+  GeneratedColumn<bool> get verifierIsIndependent => $composableBuilder(
+      column: $table.verifierIsIndependent, builder: (column) => column);
+
+  GeneratedColumn<String> get payloadJson => $composableBuilder(
+      column: $table.payloadJson, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+      column: $table.attemptCount, builder: (column) => column);
+
+  GeneratedColumn<int> get maxAttempts => $composableBuilder(
+      column: $table.maxAttempts, builder: (column) => column);
+
+  GeneratedColumn<String> get resultJson => $composableBuilder(
+      column: $table.resultJson, builder: (column) => column);
+
+  GeneratedColumn<String> get errorMessage => $composableBuilder(
+      column: $table.errorMessage, builder: (column) => column);
+
+  GeneratedColumn<String> get progressJson => $composableBuilder(
+      column: $table.progressJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+      column: $table.completedAt, builder: (column) => column);
+}
+
+class $$AnalysisJobsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AnalysisJobsTable,
+    AnalysisJob,
+    $$AnalysisJobsTableFilterComposer,
+    $$AnalysisJobsTableOrderingComposer,
+    $$AnalysisJobsTableAnnotationComposer,
+    $$AnalysisJobsTableCreateCompanionBuilder,
+    $$AnalysisJobsTableUpdateCompanionBuilder,
+    (
+      AnalysisJob,
+      BaseReferences<_$AppDatabase, $AnalysisJobsTable, AnalysisJob>
+    ),
+    AnalysisJob,
+    PrefetchHooks Function()> {
+  $$AnalysisJobsTableTableManager(_$AppDatabase db, $AnalysisJobsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AnalysisJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AnalysisJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AnalysisJobsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> idempotencyKey = const Value.absent(),
+            Value<String> parentQuestionId = const Value.absent(),
+            Value<String> taskType = const Value.absent(),
+            Value<String> workloadProfile = const Value.absent(),
+            Value<String> requiredCapabilitiesJson = const Value.absent(),
+            Value<String> qualityPolicy = const Value.absent(),
+            Value<String> queuePriority = const Value.absent(),
+            Value<String> dependencyJobIdsJson = const Value.absent(),
+            Value<String> modelRole = const Value.absent(),
+            Value<String> requestedModelClass = const Value.absent(),
+            Value<String> requestedModelRole = const Value.absent(),
+            Value<String> resolvedRouteId = const Value.absent(),
+            Value<String> providerConfigId = const Value.absent(),
+            Value<String> modelName = const Value.absent(),
+            Value<String> promptVersion = const Value.absent(),
+            Value<bool> verifierIsIndependent = const Value.absent(),
+            Value<String> payloadJson = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<int> attemptCount = const Value.absent(),
+            Value<int> maxAttempts = const Value.absent(),
+            Value<String?> resultJson = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<String?> progressJson = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> startedAt = const Value.absent(),
+            Value<DateTime?> completedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AnalysisJobsCompanion(
+            id: id,
+            idempotencyKey: idempotencyKey,
+            parentQuestionId: parentQuestionId,
+            taskType: taskType,
+            workloadProfile: workloadProfile,
+            requiredCapabilitiesJson: requiredCapabilitiesJson,
+            qualityPolicy: qualityPolicy,
+            queuePriority: queuePriority,
+            dependencyJobIdsJson: dependencyJobIdsJson,
+            modelRole: modelRole,
+            requestedModelClass: requestedModelClass,
+            requestedModelRole: requestedModelRole,
+            resolvedRouteId: resolvedRouteId,
+            providerConfigId: providerConfigId,
+            modelName: modelName,
+            promptVersion: promptVersion,
+            verifierIsIndependent: verifierIsIndependent,
+            payloadJson: payloadJson,
+            status: status,
+            attemptCount: attemptCount,
+            maxAttempts: maxAttempts,
+            resultJson: resultJson,
+            errorMessage: errorMessage,
+            progressJson: progressJson,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            startedAt: startedAt,
+            completedAt: completedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String idempotencyKey,
+            required String parentQuestionId,
+            required String taskType,
+            required String workloadProfile,
+            required String requiredCapabilitiesJson,
+            required String qualityPolicy,
+            required String queuePriority,
+            required String dependencyJobIdsJson,
+            required String modelRole,
+            required String requestedModelClass,
+            required String requestedModelRole,
+            required String resolvedRouteId,
+            required String providerConfigId,
+            required String modelName,
+            required String promptVersion,
+            Value<bool> verifierIsIndependent = const Value.absent(),
+            required String payloadJson,
+            required String status,
+            Value<int> attemptCount = const Value.absent(),
+            Value<int> maxAttempts = const Value.absent(),
+            Value<String?> resultJson = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<String?> progressJson = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<DateTime?> startedAt = const Value.absent(),
+            Value<DateTime?> completedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AnalysisJobsCompanion.insert(
+            id: id,
+            idempotencyKey: idempotencyKey,
+            parentQuestionId: parentQuestionId,
+            taskType: taskType,
+            workloadProfile: workloadProfile,
+            requiredCapabilitiesJson: requiredCapabilitiesJson,
+            qualityPolicy: qualityPolicy,
+            queuePriority: queuePriority,
+            dependencyJobIdsJson: dependencyJobIdsJson,
+            modelRole: modelRole,
+            requestedModelClass: requestedModelClass,
+            requestedModelRole: requestedModelRole,
+            resolvedRouteId: resolvedRouteId,
+            providerConfigId: providerConfigId,
+            modelName: modelName,
+            promptVersion: promptVersion,
+            verifierIsIndependent: verifierIsIndependent,
+            payloadJson: payloadJson,
+            status: status,
+            attemptCount: attemptCount,
+            maxAttempts: maxAttempts,
+            resultJson: resultJson,
+            errorMessage: errorMessage,
+            progressJson: progressJson,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            startedAt: startedAt,
+            completedAt: completedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AnalysisJobsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AnalysisJobsTable,
+    AnalysisJob,
+    $$AnalysisJobsTableFilterComposer,
+    $$AnalysisJobsTableOrderingComposer,
+    $$AnalysisJobsTableAnnotationComposer,
+    $$AnalysisJobsTableCreateCompanionBuilder,
+    $$AnalysisJobsTableUpdateCompanionBuilder,
+    (
+      AnalysisJob,
+      BaseReferences<_$AppDatabase, $AnalysisJobsTable, AnalysisJob>
+    ),
+    AnalysisJob,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3843,4 +6408,9 @@ class $AppDatabaseManager {
       $$ReviewLogsTableTableManager(_db, _db.reviewLogs);
   $$SettingsEntriesTableTableManager get settingsEntries =>
       $$SettingsEntriesTableTableManager(_db, _db.settingsEntries);
+  $$AiConversationMessagesTableTableManager get aiConversationMessages =>
+      $$AiConversationMessagesTableTableManager(
+          _db, _db.aiConversationMessages);
+  $$AnalysisJobsTableTableManager get analysisJobs =>
+      $$AnalysisJobsTableTableManager(_db, _db.analysisJobs);
 }

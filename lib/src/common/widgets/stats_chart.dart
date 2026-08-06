@@ -185,12 +185,20 @@ class StatsGrid extends StatelessWidget {
     required this.todayNew,
     required this.pending,
     required this.mastered,
+    this.onTotalTap,
+    this.onTodayNewTap,
+    this.onPendingTap,
+    this.onMasteredTap,
   });
 
   final int total;
   final int todayNew;
   final int pending;
   final int mastered;
+  final VoidCallback? onTotalTap;
+  final VoidCallback? onTodayNewTap;
+  final VoidCallback? onPendingTap;
+  final VoidCallback? onMasteredTap;
 
   @override
   Widget build(BuildContext context) {
@@ -210,6 +218,7 @@ class StatsGrid extends StatelessWidget {
                 border: const Color(0xFFBFDBFE),
                 darkBorder: const Color(0xFF2563EB).withValues(alpha: 0.35),
                 text: const Color(0xFF2563EB),
+                onTap: onTotalTap,
               ),
             ),
             const SizedBox(width: 12),
@@ -225,6 +234,7 @@ class StatsGrid extends StatelessWidget {
                 text: isDark
                     ? colorScheme.onSurfaceVariant
                     : const Color(0xFF6B7280),
+                onTap: onTodayNewTap,
               ),
             ),
           ],
@@ -241,6 +251,7 @@ class StatsGrid extends StatelessWidget {
                 border: const Color(0xFFBBF7D0),
                 darkBorder: const Color(0xFF16A34A).withValues(alpha: 0.35),
                 text: const Color(0xFF16A34A),
+                onTap: onMasteredTap,
               ),
             ),
             const SizedBox(width: 12),
@@ -253,6 +264,7 @@ class StatsGrid extends StatelessWidget {
                 border: const Color(0xFFFED7AA),
                 darkBorder: const Color(0xFFEA580C).withValues(alpha: 0.35),
                 text: const Color(0xFFEA580C),
+                onTap: onPendingTap,
               ),
             ),
           ],
@@ -271,6 +283,7 @@ class _StatCard extends StatelessWidget {
     required this.border,
     required this.darkBorder,
     required this.text,
+    this.onTap,
   });
 
   final String label;
@@ -280,31 +293,48 @@ class _StatCard extends StatelessWidget {
   final Color border;
   final Color darkBorder;
   final Color text;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? darkBg : bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isDark ? darkBorder : border),
+    return Material(
+      color: isDark ? darkBg : bg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: isDark ? darkBorder : border),
       ),
-      child: Column(
-        children: <Widget>[
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: text,
-            ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: <Widget>[
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: text,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(label, style: TextStyle(fontSize: 11, color: text)),
+                  if (onTap != null) ...<Widget>[
+                    const SizedBox(width: 2),
+                    Icon(Icons.chevron_right, size: 14, color: text),
+                  ],
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 11, color: text)),
-        ],
+        ),
       ),
     );
   }

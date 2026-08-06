@@ -114,7 +114,7 @@ class _QuestionSplitConfirmationScreenState
                     runSpacing: 6,
                     children: <Widget>[
                       _SummaryChip(
-                        label: '候选 ${drafts.length} 题',
+                        label: '可保存 ${drafts.length} 题',
                         bgColor: isDark
                             ? const Color(0xFF4F46E5).withValues(alpha: 0.18)
                             : const Color(0xFFEEF2FF),
@@ -134,6 +134,22 @@ class _QuestionSplitConfirmationScreenState
                             : const Color(0xFFFFF7ED),
                         textColor: const Color(0xFFD97706),
                       ),
+                      if (session.failedCandidateCount > 0)
+                        _SummaryChip(
+                          label: '${session.failedCandidateCount} 题未解析成功',
+                          bgColor: isDark
+                              ? const Color(0xFFDC2626).withValues(alpha: 0.16)
+                              : const Color(0xFFFEF2F2),
+                          textColor: const Color(0xFFB91C1C),
+                        ),
+                      if (session.retryingCandidateCount > 0)
+                        _SummaryChip(
+                          label: '${session.retryingCandidateCount} 题重新解析中',
+                          bgColor: isDark
+                              ? const Color(0xFFD97706).withValues(alpha: 0.16)
+                              : const Color(0xFFFFF7ED),
+                          textColor: const Color(0xFFB45309),
+                        ),
                     ],
                   ),
                 ],
@@ -178,7 +194,7 @@ class _QuestionSplitConfirmationScreenState
                       style:
                           TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
-                  Text('取消不需要保存的题目，点击卡片切换当前编辑项，底部会保存所有已勾选题目。',
+                  Text('仅展示解析成功的题目。取消不需要保存的题目，点击卡片切换当前编辑项。',
                       style: TextStyle(
                           fontSize: 12,
                           color:
@@ -343,7 +359,7 @@ class _QuestionSplitConfirmationScreenState
                             style: TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w600)),
                         const Spacer(),
-                        Text('第 ${safeIndex + 1} 题',
+                        Text('第 ${activeDraft.originalOrder} 题',
                             style: TextStyle(
                                 fontSize: 12,
                                 color: Theme.of(context)
@@ -428,7 +444,9 @@ class _QuestionSplitConfirmationScreenState
             ],
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _isSaving || selectedCount == 0
+              onPressed: _isSaving ||
+                      selectedCount == 0 ||
+                      session.retryingCandidateCount > 0
                   ? null
                   : () => _saveQuestions(_draftsForSelected(session)),
               icon: _isSaving
@@ -446,7 +464,11 @@ class _QuestionSplitConfirmationScreenState
             Text(
               selectedCount == 0
                   ? '请至少勾选一道题后再保存。'
-                  : '将保存已勾选的 $selectedCount 道题；未勾选题目不会写入错题本。',
+                  : session.retryingCandidateCount > 0
+                      ? '有题正在重新解析，完成后再决定保存，避免中断本次重试。'
+                      : session.failedCandidateCount > 0
+                          ? '将保存已勾选的 $selectedCount 道题；${session.failedCandidateCount} 道未解析成功的题不会写入错题本。'
+                          : '将保存已勾选的 $selectedCount 道题；未勾选题目不会写入错题本。',
               textAlign: TextAlign.center,
               style:
                   TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
@@ -532,6 +554,11 @@ class _QuestionSplitConfirmationScreenState
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final confirmed = await _confirmSave(session, normalizedDrafts.length);
+    if (confirmed != true) return;
+
     setState(() {
       _isSaving = true;
       _errorMessage = null;
@@ -542,14 +569,20 @@ class _QuestionSplitConfirmationScreenState
         return buildSplitQuestionRecord(
           source: session.source,
           draft: entry.value,
-          sortOrder: entry.key + 1,
+          sortOrder: entry.value.originalOrder,
         );
       }).toList();
 
-      final messenger = ScaffoldMessenger.of(context);
-      final router = GoRouter.of(context);
       await ref.read(questionRepositoryProvider).saveDrafts(records);
+      try {
+        await ref
+            .read(scanTaskLifecycleServiceProvider)
+            .completeSaved(session.source.id);
+      } catch (_) {
+        // The saved notebook records remain authoritative.
+      }
       invalidateQuestionList(ref);
+      ref.invalidate(scanTaskCountProvider);
       ref.read(currentQuestionProvider.notifier).state = records.first;
       ref.read(currentQuestionSplitSessionProvider.notifier).state = null;
       if (!mounted) return;
@@ -567,6 +600,32 @@ class _QuestionSplitConfirmationScreenState
         _errorMessage = '保存失败：$e';
       });
     }
+  }
+
+  Future<bool?> _confirmSave(
+    QuestionSplitSession session,
+    int selectedCount,
+  ) {
+    if (session.failedCandidateCount == 0) return Future<bool?>.value(true);
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('保存已解析题目'),
+        content: Text(
+          '将保存 $selectedCount 道已解析题。另 ${session.failedCandidateCount} 道未解析成功的题不会保存，本次扫描结果将结束。',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('返回处理'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('继续保存'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showFullImage(BuildContext context, String imagePath) {

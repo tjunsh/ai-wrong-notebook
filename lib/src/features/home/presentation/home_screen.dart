@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
 import 'package:smart_wrong_notebook/src/common/widgets/stats_chart.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_coordinator.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
 import 'package:smart_wrong_notebook/src/features/capture/presentation/capture_entry_sheet.dart';
+import 'package:smart_wrong_notebook/src/features/home/presentation/background_analysis_section.dart';
 import 'package:smart_wrong_notebook/src/shared/widgets/math_content_view.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -16,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final questionsAsync = ref.watch(questionListProvider);
     final dueAsync = ref.watch(dueReviewProvider);
+    final analysisTasksAsync = ref.watch(backgroundAnalysisTasksProvider);
 
     return SafeArea(
       child: ListView(
@@ -40,6 +43,29 @@ class HomeScreen extends ConsumerWidget {
                 minimumSize: const Size(double.infinity, 52)),
           ),
           const SizedBox(height: 20),
+          analysisTasksAsync.when(
+            data: (tasks) {
+              if (tasks.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: BackgroundAnalysisSection(
+                  tasks: tasks,
+                  onOpenResult: (task) {
+                    final result = task.resultQuestion;
+                    if (result == null) return;
+                    ref.read(currentQuestionProvider.notifier).state = result;
+                    context.go('/analysis/result');
+                  },
+                  onRetry: (task) {
+                    _retryTask(context, ref, task);
+                  },
+                  onDelete: (task) => _deleteTask(context, ref, task),
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
           dueAsync.when(
             data: (due) => due.isNotEmpty
                 ? _ReviewBanner(
@@ -53,7 +79,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           RepaintBoundary(
             child: questionsAsync.when(
-              data: (questions) => _buildStatsSection(context, questions),
+              data: (questions) => _buildStatsSection(context, ref, questions),
               loading: () => const _StatsGridSkeleton(),
               error: (e, _) => Text('加载失败: $e'),
             ),
@@ -81,8 +107,66 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _retryTask(
+    BuildContext context,
+    WidgetRef ref,
+    QuestionAnalysisTaskSnapshot task,
+  ) async {
+    try {
+      await ref
+          .read(scanTaskLifecycleServiceProvider)
+          .prepareRetry(task.sourceQuestion);
+      ref.read(currentQuestionProvider.notifier).state = task.sourceQuestion;
+      if (context.mounted) context.go('/analysis/loading');
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('重新排队失败：$error')),
+      );
+    }
+  }
+
+  Future<void> _deleteTask(
+    BuildContext context,
+    WidgetRef ref,
+    QuestionAnalysisTaskSnapshot task,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除扫题任务'),
+        content: const Text('确定删除这次扫题及其解析结果吗？此操作不可恢复。'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(scanTaskLifecycleServiceProvider)
+          .discard(task.sourceQuestion);
+      ref.invalidate(scanTaskCountProvider);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$error')),
+      );
+    }
+  }
+
   Widget _buildStatsSection(
-      BuildContext context, List<QuestionRecord> questions) {
+    BuildContext context,
+    WidgetRef ref,
+    List<QuestionRecord> questions,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     final total = questions.length;
     final mastered =
@@ -105,6 +189,18 @@ class HomeScreen extends ConsumerWidget {
           todayNew: todayNew,
           pending: pending,
           mastered: mastered,
+          onTotalTap: () => _openNotebook(context, ref),
+          onTodayNewTap: () => _openNotebook(
+            context,
+            ref,
+            createdToday: true,
+          ),
+          onMasteredTap: () => _openNotebook(
+            context,
+            ref,
+            masteryLevel: MasteryLevel.mastered,
+          ),
+          onPendingTap: () => context.go('/review'),
         ),
         if (total > 0) ...<Widget>[
           const SizedBox(height: 16),
@@ -175,6 +271,21 @@ class HomeScreen extends ConsumerWidget {
         ],
       ],
     );
+  }
+
+  void _openNotebook(
+    BuildContext context,
+    WidgetRef ref, {
+    MasteryLevel? masteryLevel,
+    bool createdToday = false,
+  }) {
+    ref.read(selectedSubjectFilterProvider.notifier).state = null;
+    ref.read(selectedMasteryFilterProvider.notifier).state = masteryLevel;
+    ref.read(selectedCreatedTodayFilterProvider.notifier).state = createdToday;
+    ref.read(selectedKnowledgePointFilterProvider.notifier).state = null;
+    ref.read(selectedTagsFilterProvider.notifier).state = const <String>[];
+    ref.read(searchQueryProvider.notifier).state = '';
+    context.go('/notebook');
   }
 }
 

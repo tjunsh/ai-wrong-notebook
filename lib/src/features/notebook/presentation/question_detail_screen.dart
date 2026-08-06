@@ -1,14 +1,33 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/remote/ai/ai_analysis_service.dart';
+import 'package:smart_wrong_notebook/src/domain/models/ai_conversation_message.dart';
+import 'package:smart_wrong_notebook/src/domain/models/ai_task_spec.dart';
 import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
+import 'package:smart_wrong_notebook/src/domain/models/analysis_job.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
+import 'package:smart_wrong_notebook/src/domain/services/exercise_round_service.dart';
 import 'package:smart_wrong_notebook/src/features/review/presentation/review_controller.dart';
 import 'package:smart_wrong_notebook/src/shared/widgets/math_content_view.dart';
+
+final _exerciseGenerationJobProvider =
+    StreamProvider.autoDispose.family<AnalysisJob?, String>((ref, questionId) {
+  final repository = ref.watch(analysisJobRepositoryProvider);
+  if (repository == null) return Stream<AnalysisJob?>.value(null);
+  return repository.watchByParentQuestionId(questionId).map((jobs) {
+    final exerciseJobs = jobs
+        .where((job) => job.taskSpec.type == AiTaskType.exerciseGeneration)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return exerciseJobs.isEmpty ? null : exerciseJobs.first;
+  });
+});
 
 class QuestionDetailScreen extends ConsumerWidget {
   const QuestionDetailScreen({super.key});
@@ -235,8 +254,6 @@ class QuestionDetailScreen extends ConsumerWidget {
           ],
           if (result != null) ...<Widget>[
             const SizedBox(height: 16),
-            _PracticeSummaryCard(current: current),
-            const SizedBox(height: 20),
             // 原题（包含图片和文本）
             _InfoCard(
               icon: CupertinoIcons.doc_text,
@@ -508,6 +525,10 @@ class QuestionDetailScreen extends ConsumerWidget {
                   )),
             ],
             const SizedBox(height: 24),
+            _AskAiCard(current: current),
+            const SizedBox(height: 16),
+            _PracticeSummaryCard(current: current),
+            const SizedBox(height: 16),
             _MasteryActions(
               current: current,
               onMarkReviewing: () => _markResult(context, ref, current, false),
@@ -773,6 +794,710 @@ class QuestionDetailScreen extends ConsumerWidget {
   }
 }
 
+class _AskAiCard extends ConsumerStatefulWidget {
+  const _AskAiCard({required this.current});
+
+  final QuestionRecord current;
+
+  @override
+  ConsumerState<_AskAiCard> createState() => _AskAiCardState();
+}
+
+class _AskAiMessage {
+  const _AskAiMessage({
+    required this.role,
+    required this.content,
+    required this.createdAt,
+  });
+
+  final String role;
+  final String content;
+  final DateTime createdAt;
+}
+
+class _AskAiCardState extends ConsumerState<_AskAiCard> {
+  final TextEditingController _controller = TextEditingController();
+  final List<_AskAiMessage> _messages = <_AskAiMessage>[];
+  bool _isExpanded = false;
+  bool _isSending = false;
+  bool _isLoadingHistory = true;
+  int _historyLoadToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AskAiCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.current.id != widget.current.id) {
+      _loadHistory();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    final token = ++_historyLoadToken;
+    setState(() {
+      _isLoadingHistory = true;
+      _messages.clear();
+    });
+
+    try {
+      final stored = await ref
+          .read(aiConversationRepositoryProvider)
+          .getByQuestionId(widget.current.id);
+      if (!mounted || token != _historyLoadToken) return;
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(stored.map((message) => _AskAiMessage(
+                role: message.role == AiConversationRole.assistant
+                    ? 'assistant'
+                    : 'user',
+                content: message.content,
+                createdAt: message.createdAt,
+              )));
+        _isLoadingHistory = false;
+      });
+    } catch (e) {
+      if (!mounted || token != _historyLoadToken) return;
+      setState(() => _isLoadingHistory = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('读取 AI 答疑历史失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _sendQuestion() async {
+    final question = _controller.text.trim();
+    if (question.isEmpty || _isSending) return;
+    final askedAt = DateTime.now();
+    final userMessage = _AskAiMessage(
+      role: 'user',
+      content: question,
+      createdAt: askedAt,
+    );
+
+    setState(() {
+      _isSending = true;
+      _messages.add(userMessage);
+      _controller.clear();
+    });
+
+    try {
+      final answer = await ref
+          .read(aiLearningTaskCoordinatorProvider)
+          .answerQuestionFollowUp(
+            question: widget.current,
+            userQuestion: question,
+            history: _messages
+                .take(_messages.length - 1)
+                .map((message) => AiFollowUpMessage(
+                      role: message.role == 'assistant' ? 'assistant' : 'user',
+                      content: message.content,
+                    ))
+                .toList(),
+          );
+      if (!mounted) return;
+      final answeredAt = DateTime.now();
+      final assistantMessage = _AskAiMessage(
+        role: 'assistant',
+        content: answer,
+        createdAt: answeredAt,
+      );
+
+      await ref.read(aiConversationRepositoryProvider).insertAll(
+        <AiConversationMessage>[
+          _toStoredMessage(userMessage, suffix: 'u'),
+          _toStoredMessage(assistantMessage, suffix: 'a'),
+        ],
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages.add(assistantMessage);
+        _isSending = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI 答疑失败：$e')),
+      );
+    }
+  }
+
+  AiConversationMessage _toStoredMessage(
+    _AskAiMessage message, {
+    required String suffix,
+  }) {
+    return AiConversationMessage(
+      id: '${widget.current.id}-${message.createdAt.microsecondsSinceEpoch}-$suffix',
+      questionId: widget.current.id,
+      role: message.role == 'assistant'
+          ? AiConversationRole.assistant
+          : AiConversationRole.user,
+      content: message.content,
+      createdAt: message.createdAt,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const accent = Color(0xFF0F766E);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: isDark ? 0.18 : 0.1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(CupertinoIcons.chat_bubble_2,
+                    size: 16, color: accent),
+              ),
+              const SizedBox(width: 10),
+              Text('AI 答疑',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface)),
+              const Spacer(),
+              Text(_messages.isEmpty ? '可追问' : '${_messages.length ~/ 2} 轮',
+                  style: TextStyle(
+                      fontSize: 12, color: colorScheme.onSurfaceVariant)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '围绕这道错题继续追问，后续会自动带入题干、答案、步骤、错因和知识点。',
+            style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                color: colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() => _isExpanded = !_isExpanded);
+              },
+              icon: const Icon(CupertinoIcons.chat_bubble_text),
+              label: Text(_isExpanded ? '收起追问' : '追问这道题'),
+            ),
+          ),
+          if (_isExpanded) ...<Widget>[
+            const SizedBox(height: 14),
+            if (_isLoadingHistory) ...<Widget>[
+              Row(
+                children: <Widget>[
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '正在读取历史追问...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (_messages.isNotEmpty) ...<Widget>[
+              ..._messages.map((message) => _AskAiMessageBubble(
+                    message: message,
+                  )),
+              const SizedBox(height: 4),
+            ],
+            TextField(
+              controller: _controller,
+              minLines: 3,
+              maxLines: 6,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: '哪里没看懂？可以继续追问哦～',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _isSending ? null : _sendQuestion,
+                icon: _isSending
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(CupertinoIcons.paperplane_fill),
+                label: Text(_isSending ? '正在回答...' : '发送追问'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AskAiMessageBubble extends StatelessWidget {
+  const _AskAiMessageBubble({required this.message});
+
+  final _AskAiMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.role == 'user';
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isUser
+        ? colorScheme.primary.withValues(alpha: isDark ? 0.18 : 0.1)
+        : isDark
+            ? colorScheme.surface
+            : const Color(0xFFF8FAFC);
+    final borderColor = isUser
+        ? colorScheme.primary.withValues(alpha: 0.22)
+        : colorScheme.outlineVariant;
+    final align = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+
+    return Column(
+      crossAxisAlignment: align,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(left: 2, right: 2, bottom: 4),
+          child: Text(
+            isUser ? '你' : 'AI 解答',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color:
+                  isUser ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          constraints: BoxConstraints(
+            maxWidth: isUser ? 360 : double.infinity,
+          ),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+          ),
+          child: isUser
+              ? Text(
+                  message.content,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.45,
+                    color: colorScheme.onSurface,
+                  ),
+                )
+              : _AskAiAnswerView(content: message.content),
+        ),
+      ],
+    );
+  }
+}
+
+class _AskAiAnswerView extends StatelessWidget {
+  const _AskAiAnswerView({required this.content});
+
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final blocks = _splitAnswerBlocks(_normalizeAnswerContent(content));
+
+    if (blocks.isEmpty) {
+      return Text(
+        '',
+        style: TextStyle(
+          fontSize: 14,
+          height: 1.55,
+          color: colorScheme.onSurface,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: blocks.asMap().entries.map((entry) {
+        final block = entry.value;
+        final isFormula = _isDisplayFormulaBlock(block);
+        final child = isFormula
+            ? Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
+                child: MathContentView(
+                  _displayFormulaForMathView(block),
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.45,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              )
+            : _AskAiTextBlock(block: block);
+
+        if (entry.key == blocks.length - 1) return child;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: child,
+        );
+      }).toList(),
+    );
+  }
+
+  static List<String> _splitAnswerBlocks(String text) {
+    final normalized = text.trim();
+    if (normalized.isEmpty) return const <String>[];
+    return normalized
+        .split(RegExp(r'\n\s*\n'))
+        .map((block) => block.trim())
+        .where((block) => block.isNotEmpty)
+        .toList();
+  }
+
+  static bool _isDisplayFormulaBlock(String block) {
+    final trimmed = block.trim();
+    if (RegExp(r'^\\\[[\s\S]*\\\]$').hasMatch(trimmed) ||
+        RegExp(r'^\$\$[\s\S]*\$\$$').hasMatch(trimmed)) {
+      return true;
+    }
+    if (RegExp(r'^\\\([\s\S]*\\\)$').hasMatch(trimmed) ||
+        RegExp(r'^\$[^\$]+\$$').hasMatch(trimmed)) {
+      return RegExp(r'[=+\-*/^]|\\frac|\\sqrt|\\times|\\begin')
+          .hasMatch(trimmed);
+    }
+    if (trimmed.length > 80 || trimmed.contains(RegExp(r'[\u4e00-\u9fa5]'))) {
+      return false;
+    }
+    return RegExp(r'[=<>]|\\frac|\\sqrt|\\begin|\^').hasMatch(trimmed) &&
+        RegExp(r'^[A-Za-z0-9\\{}\[\]().,，:：;；+\-*/=<>_^|\s]+$')
+            .hasMatch(trimmed);
+  }
+
+  static String _displayFormulaForMathView(String block) {
+    final trimmed = block.trim();
+    if (RegExp(r'^\\\[[\s\S]*\\\]$').hasMatch(trimmed) ||
+        RegExp(r'^\$\$[\s\S]*\$\$$').hasMatch(trimmed)) {
+      return trimmed;
+    }
+    if (RegExp(r'^\\\([\s\S]*\\\)$').hasMatch(trimmed)) {
+      return '\\[${trimmed.substring(2, trimmed.length - 2).trim()}\\]';
+    }
+    if (RegExp(r'^\$[^\$]+\$$').hasMatch(trimmed)) {
+      return '\\[${trimmed.substring(1, trimmed.length - 1).trim()}\\]';
+    }
+    return '\\[$trimmed\\]';
+  }
+
+  static String _normalizeAnswerContent(String value) {
+    var text = value.replaceAll('\r\n', '\n').trim();
+    text = text.replaceAllMapped(
+      RegExp(r'\\\[\s*([\s\S]*?)\s*\\\]'),
+      (match) => '\n\n\\[${match.group(1)!.trim()}\\]\n\n',
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'\$\$\s*([\s\S]*?)\s*\$\$'),
+      (match) => '\n\n\$\$${match.group(1)!.trim()}\$\$\n\n',
+    );
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return text;
+  }
+}
+
+class _AskAiTextBlock extends StatelessWidget {
+  const _AskAiTextBlock({required this.block});
+
+  final String block;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = block.trim();
+    if (_isBulletBlock(normalized)) {
+      return _AskAiBulletList(block: normalized);
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final heading = _headingText(normalized);
+    if (heading != null) {
+      return _AskAiInlineText(
+        heading,
+        style: TextStyle(
+          fontSize: 14,
+          height: 1.45,
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurface,
+        ),
+      );
+    }
+
+    return _AskAiInlineText(
+      normalized.replaceAll(RegExp(r'\s*\n\s*'), ' '),
+      style: TextStyle(
+        fontSize: 14,
+        height: 1.62,
+        color: colorScheme.onSurface,
+      ),
+    );
+  }
+
+  static bool _isBulletBlock(String value) {
+    final lines = value
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return false;
+    return lines
+        .every((line) => RegExp(r'^([-*•]\s+|\d+[.)、]\s+)').hasMatch(line));
+  }
+
+  static String? _headingText(String value) {
+    final markdownHeading = RegExp(r'^\s{0,3}#{1,4}\s+(.+)$').firstMatch(value);
+    if (markdownHeading != null) return markdownHeading.group(1)!.trim();
+    if (!value.contains('\n') && value.length <= 18 && value.endsWith('：')) {
+      return value;
+    }
+    return null;
+  }
+}
+
+class _AskAiBulletList extends StatelessWidget {
+  const _AskAiBulletList({required this.block});
+
+  final String block;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lines = block
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map((line) {
+        final text =
+            line.replaceFirst(RegExp(r'^([-*•]\s+|\d+[.)、]\s+)'), '').trim();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(top: 7),
+                child: Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.75),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _AskAiInlineText(
+                  text,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.55,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _AskAiInlineText extends StatelessWidget {
+  const _AskAiInlineText(
+    this.text, {
+    required this.style,
+  });
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(children: _inlineSpans(text, style)),
+      style: style,
+    );
+  }
+
+  static List<InlineSpan> _inlineSpans(String value, TextStyle style) {
+    final spans = <InlineSpan>[];
+    final pattern = RegExp(r'\\\(([\s\S]*?)\\\)|(?<!\\)\$([^\$]+)\$');
+    var cursor = 0;
+    for (final match in pattern.allMatches(value)) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: value.substring(cursor, match.start)));
+      }
+      final formula = match.group(1) ?? match.group(2) ?? '';
+      spans.add(TextSpan(
+        text: _inlineFormulaToReadable(formula),
+        style: style.copyWith(fontWeight: FontWeight.w500),
+      ));
+      cursor = match.end;
+    }
+    if (cursor < value.length) {
+      spans.add(TextSpan(text: value.substring(cursor)));
+    }
+    return spans;
+  }
+
+  static String _inlineFormulaToReadable(String value) {
+    var text = value.trim();
+    text = text
+        .replaceAll(r'\left', '')
+        .replaceAll(r'\right', '')
+        .replaceAll(r'\,', ' ')
+        .replaceAll(r'\;', ' ')
+        .replaceAll(r'\quad', ' ')
+        .replaceAll(r'\qquad', ' ')
+        .replaceAllMapped(
+          RegExp(r'\\mathrm\{([^}]*)\}'),
+          (match) => match.group(1)!,
+        )
+        .replaceAllMapped(
+          RegExp(r'\\text\{([^}]*)\}'),
+          (match) => match.group(1)!,
+        )
+        .replaceAllMapped(
+          RegExp(r'\\frac\{([^}]*)\}\{([^}]*)\}'),
+          (match) => '${match.group(1)!}/${match.group(2)!}',
+        )
+        .replaceAllMapped(
+          RegExp(r'\\sqrt\{([^}]*)\}'),
+          (match) => '√${match.group(1)!}',
+        )
+        .replaceAll(r'\times', '×')
+        .replaceAll(r'\cdot', '·')
+        .replaceAll(r'\div', '÷')
+        .replaceAll(r'\pm', '±')
+        .replaceAll(r'\mp', '∓')
+        .replaceAll(r'\leq', '≤')
+        .replaceAll(r'\geq', '≥')
+        .replaceAll(r'\neq', '≠')
+        .replaceAll(r'\approx', '≈')
+        .replaceAll(r'\angle', '∠')
+        .replaceAll(r'\triangle', '△')
+        .replaceAll(r'\circ', '°')
+        .replaceAll(r'\pi', 'π')
+        .replaceAll(r'\Delta', 'Δ')
+        .replaceAll(r'\alpha', 'α')
+        .replaceAll(r'\beta', 'β')
+        .replaceAll(r'\gamma', 'γ')
+        .replaceAll(r'\theta', 'θ');
+    text = text.replaceAllMapped(
+      RegExp(r'\^\{?([0-9+\-]+)\}?'),
+      (match) => _superscript(match.group(1)!),
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'_\{?([0-9+\-]+)\}?'),
+      (match) => _subscript(match.group(1)!),
+    );
+    return text
+        .replaceAll('{', '')
+        .replaceAll('}', '')
+        .replaceAll(r'\ ', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String _superscript(String value) {
+    const map = <String, String>{
+      '0': '⁰',
+      '1': '¹',
+      '2': '²',
+      '3': '³',
+      '4': '⁴',
+      '5': '⁵',
+      '6': '⁶',
+      '7': '⁷',
+      '8': '⁸',
+      '9': '⁹',
+      '+': '⁺',
+      '-': '⁻',
+    };
+    return value.split('').map((char) => map[char] ?? char).join();
+  }
+
+  static String _subscript(String value) {
+    const map = <String, String>{
+      '0': '₀',
+      '1': '₁',
+      '2': '₂',
+      '3': '₃',
+      '4': '₄',
+      '5': '₅',
+      '6': '₆',
+      '7': '₇',
+      '8': '₈',
+      '9': '₉',
+      '+': '₊',
+      '-': '₋',
+    };
+    return value.split('').map((char) => map[char] ?? char).join();
+  }
+}
+
 class _MasteryActions extends StatelessWidget {
   const _MasteryActions({
     required this.current,
@@ -816,15 +1541,157 @@ class _MasteryActions extends StatelessWidget {
   }
 }
 
-class _PracticeSummaryCard extends ConsumerWidget {
+class _PracticeSummaryCard extends ConsumerStatefulWidget {
   const _PracticeSummaryCard({required this.current});
 
   final QuestionRecord current;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PracticeSummaryCard> createState() =>
+      _PracticeSummaryCardState();
+}
+
+class _PracticeSummaryCardState extends ConsumerState<_PracticeSummaryCard> {
+  bool _isGenerating = false;
+  String? _statusMessage;
+  bool _statusIsError = false;
+  String? _lastSyncedCompletedExerciseJobId;
+
+  Future<void> _generateAndStartPractice({bool forceNew = false}) async {
+    if (_isGenerating) return;
+
+    final current = widget.current;
+    if (current.savedExercises.isNotEmpty && !forceNew) {
+      _startPractice(current);
+      return;
+    }
+
+    setState(() {
+      _isGenerating = true;
+      _statusMessage = '正在生成练习题，请稍等...';
+      _statusIsError = false;
+    });
+    try {
+      final exercises = await ref
+          .read(aiLearningTaskCoordinatorProvider)
+          .generateExercisesForQuestion(current, forceNew: forceNew);
+      if (!mounted) return;
+
+      if (exercises.isEmpty ||
+          (forceNew && exercises.length <= current.savedExercises.length)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂未生成可用练习，请稍后重试')),
+        );
+        setState(() {
+          _isGenerating = false;
+          _statusMessage = '这次没有生成可用练习，可以稍后重试。';
+          _statusIsError = true;
+        });
+        return;
+      }
+
+      final latest =
+          await ref.read(questionRepositoryProvider).getById(current.id);
+      final updated = (latest ?? current).copyWith(savedExercises: exercises);
+      await ref.read(questionRepositoryProvider).update(updated);
+      if (!mounted) return;
+
+      ref.read(currentQuestionProvider.notifier).state = updated;
+      invalidateQuestionList(ref);
+      final latestGeneratedRound = latestExerciseRound(exercises);
+      final generatedCount = latestGeneratedRound.isEmpty
+          ? exercises.length
+          : latestGeneratedRound.length;
+      setState(() {
+        _isGenerating = false;
+        _statusMessage = '已生成 $generatedCount 道练习题，可以开始练习。';
+        _statusIsError = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('举一反三已生成，可以开始练习')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isGenerating = false;
+        _statusMessage = '生成失败，请检查网络或稍后重试。';
+        _statusIsError = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('举一反三生成失败：$e')),
+      );
+    }
+  }
+
+  void _startPractice(QuestionRecord current) {
+    ref.read(currentPracticeContextProvider.notifier).state = PracticeContext(
+      source: PracticeContextSource.notebook,
+      returnRoute: '/notebook/question/${current.id}',
+    );
+    ref.read(currentQuestionProvider.notifier).state = current;
+    context.go('/exercise/practice');
+  }
+
+  Future<void> _syncCompletedExerciseJob(AnalysisJob job) async {
+    if (_lastSyncedCompletedExerciseJobId == job.id) return;
+    _lastSyncedCompletedExerciseJobId = job.id;
+
+    final latest =
+        await ref.read(questionRepositoryProvider).getById(widget.current.id);
+    if (!mounted || latest == null || latest.savedExercises.isEmpty) return;
+
+    ref.read(currentQuestionProvider.notifier).state = latest;
+    invalidateQuestionList(ref);
+    setState(() {
+      _isGenerating = false;
+      _statusMessage = '已生成 ${latest.savedExercises.length} 道练习题，可以开始练习。';
+      _statusIsError = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = widget.current;
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasExercises = current.savedExercises.isNotEmpty;
+    final latestRound = latestExerciseRound(current.savedExercises);
+    final latestRoundCompleted =
+        isLatestExerciseRoundCompleted(current.savedExercises);
+    final generationJob =
+        ref.watch(_exerciseGenerationJobProvider(current.id)).valueOrNull;
+    ref.listen<AsyncValue<AnalysisJob?>>(
+      _exerciseGenerationJobProvider(current.id),
+      (_, next) {
+        final job = next.valueOrNull;
+        if (job?.status == AnalysisJobStatus.completed) {
+          unawaited(_syncCompletedExerciseJob(job!));
+        }
+      },
+    );
+    final isQueued = generationJob?.status == AnalysisJobStatus.queued;
+    final isRunning = generationJob?.status == AnalysisJobStatus.running;
+    final hasActiveGenerationJob = isQueued || isRunning;
+    final isSubmitting = _isGenerating && generationJob == null;
+    final isGenerating = isSubmitting || hasActiveGenerationJob;
+    final jobStatusMessage = _exerciseGenerationStatusMessage(
+      generationJob,
+      hasExercises: hasExercises,
+    );
+    final effectiveStatusMessage = hasActiveGenerationJob
+        ? jobStatusMessage
+        : (_statusMessage ?? jobStatusMessage);
+    final effectiveStatusIsError = (!hasActiveGenerationJob &&
+            _statusIsError) ||
+        generationJob?.status == AnalysisJobStatus.failed ||
+        (generationJob?.status == AnalysisJobStatus.completed &&
+            !hasExercises &&
+            (generationJob?.resultJson?.contains('"exercises":[]') ?? false));
+    final inlineStatusIsLoading = isSubmitting || isRunning;
+    final answeredCount = latestRound.where((e) => e.isCorrect != null).length;
+    final totalCount = latestRound.isNotEmpty
+        ? latestRound.length
+        : current.savedExercises.length;
     const accent = Color(0xFF6366F1);
 
     return Container(
@@ -857,9 +1724,15 @@ class _PracticeSummaryCard extends ConsumerWidget {
                       color: colorScheme.onSurface)),
               const Spacer(),
               Text(
-                current.savedExercises.isEmpty
-                    ? '暂无练习'
-                    : '${current.savedExercises.where((e) => e.isCorrect != null).length}/${current.savedExercises.length} 已答',
+                hasExercises
+                    ? '$answeredCount/$totalCount 已答'
+                    : isQueued
+                        ? '排队中'
+                        : isGenerating
+                            ? '生成中'
+                            : generationJob?.status == AnalysisJobStatus.failed
+                                ? '生成失败'
+                                : '未生成',
                 style: TextStyle(
                     fontSize: 12, color: colorScheme.onSurfaceVariant),
               ),
@@ -867,32 +1740,204 @@ class _PracticeSummaryCard extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            current.savedExercises.isEmpty
-                ? '这道错题还没有可继续的练习题。'
-                : '继续基于这道原题完成练习，已作答状态会保留。',
+            hasExercises
+                ? latestRoundCompleted
+                    ? '本轮练习已完成，可以再生成一组新的举一反三。'
+                    : '已基于这道错题生成 $totalCount 道练习，继续完成剩余题目。'
+                : '根据这道错题的题干、知识点和解析生成练习；宁可少生成，也不展示低质量练习。',
             style: TextStyle(
                 fontSize: 14,
                 height: 1.45,
                 color: colorScheme.onSurfaceVariant),
           ),
+          if (hasExercises) ...<Widget>[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                _PracticeStatusChip(
+                  icon: CupertinoIcons.square_list,
+                  label: '$totalCount 题',
+                  color: accent,
+                ),
+                _PracticeStatusChip(
+                  icon: CupertinoIcons.check_mark_circled,
+                  label: '$answeredCount 已答',
+                  color: answeredCount == totalCount
+                      ? const Color(0xFF059669)
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ],
+          if (effectiveStatusMessage != null) ...<Widget>[
+            const SizedBox(height: 12),
+            _PracticeInlineStatus(
+              message: effectiveStatusMessage,
+              isError: effectiveStatusIsError,
+              isLoading: inlineStatusIsLoading,
+            ),
+          ],
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: current.savedExercises.isEmpty
+              onPressed: isGenerating
                   ? null
-                  : () {
-                      ref.read(currentPracticeContextProvider.notifier).state =
-                          PracticeContext(
-                        source: PracticeContextSource.notebook,
-                        returnRoute: '/notebook/question/${current.id}',
-                      );
-                      ref.read(currentQuestionProvider.notifier).state =
-                          current;
-                      context.go('/exercise/practice');
-                    },
-              icon: const Icon(CupertinoIcons.play_fill),
-              label: Text(current.savedExercises.isEmpty ? '暂无可练习内容' : '继续练习'),
+                  : hasExercises
+                      ? latestRoundCompleted
+                          ? () => _generateAndStartPractice(forceNew: true)
+                          : () => _startPractice(current)
+                      : _generateAndStartPractice,
+              icon: isQueued
+                  ? const Icon(CupertinoIcons.clock)
+                  : isGenerating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(hasExercises
+                          ? CupertinoIcons.play_fill
+                          : CupertinoIcons.add_circled),
+              label: Text(isGenerating
+                  ? isQueued
+                      ? '排队中...'
+                      : isSubmitting
+                          ? '提交中...'
+                          : '正在生成...'
+                  : hasExercises
+                      ? latestRoundCompleted
+                          ? '再生成一组'
+                          : '继续练习'
+                      : '生成举一反三'),
+            ),
+          ),
+          if (!hasExercises && !isGenerating) ...<Widget>[
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                '生成练习不会影响原题解析。',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String? _exerciseGenerationStatusMessage(
+    AnalysisJob? job, {
+    required bool hasExercises,
+  }) {
+    if (job == null) return null;
+    return switch (job.status) {
+      AnalysisJobStatus.queued => '已加入 AI 队列，会在前面的任务完成后继续；你可以先返回首页继续使用。',
+      AnalysisJobStatus.running => '正在生成练习题，请稍等...',
+      AnalysisJobStatus.completed => hasExercises ? null : '这次没有生成可用练习，可以稍后重试。',
+      AnalysisJobStatus.failed => '生成失败，请检查网络或稍后重试。',
+      AnalysisJobStatus.cancelled => '生成任务已取消，可以重新生成。',
+    };
+  }
+}
+
+class _PracticeStatusChip extends StatelessWidget {
+  const _PracticeStatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.18 : 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PracticeInlineStatus extends StatelessWidget {
+  const _PracticeInlineStatus({
+    required this.message,
+    required this.isError,
+    required this.isLoading,
+  });
+
+  final String message;
+  final bool isError;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = isError ? colorScheme.error : const Color(0xFF6366F1);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          if (isLoading)
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: color,
+              ),
+            )
+          else
+            Icon(
+              isError
+                  ? CupertinoIcons.exclamationmark_triangle
+                  : CupertinoIcons.check_mark_circled,
+              size: 15,
+              color: color,
+            ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: isError ? colorScheme.error : colorScheme.onSurface,
+              ),
             ),
           ),
         ],

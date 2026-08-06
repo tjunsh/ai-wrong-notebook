@@ -39,7 +39,8 @@ class CaptureService {
         source: ImageSource.camera,
         imageQuality: 85,
       );
-      debugPrint('[CaptureService] Camera result: ${file?.path ?? "cancelled"}');
+      debugPrint(
+          '[CaptureService] Camera result: ${file?.path ?? "cancelled"}');
 
       if (file == null) {
         return CaptureResult.cancel();
@@ -61,7 +62,8 @@ class CaptureService {
         source: ImageSource.gallery,
         imageQuality: 85,
       );
-      debugPrint('[CaptureService] Gallery result: ${file?.path ?? "cancelled"}');
+      debugPrint(
+          '[CaptureService] Gallery result: ${file?.path ?? "cancelled"}');
 
       if (file == null) {
         return CaptureResult.cancel();
@@ -81,7 +83,7 @@ class CaptureService {
     return QuestionRecord.draft(
       id: const Uuid().v4(),
       imagePath: savedPath,
-      subject: Subject.math,
+      subject: Subject.unknown,
       recognizedText: '',
     );
   }

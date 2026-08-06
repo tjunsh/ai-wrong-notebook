@@ -56,6 +56,24 @@ class QuestionSplitService {
       );
     }
 
+    if (isSingleChoiceQuestionWithOptionBlock(normalized, subject: subject)) {
+      return QuestionSplitResult(
+        sourceText: normalized,
+        candidates: _buildCandidates(
+            <String>[normalized], QuestionSplitStrategy.fallback),
+        strategy: QuestionSplitStrategy.fallback,
+      );
+    }
+
+    if (isSingleQuestionWithSupportingBlocks(normalized, subject: subject)) {
+      return QuestionSplitResult(
+        sourceText: normalized,
+        candidates: _buildCandidates(
+            <String>[normalized], QuestionSplitStrategy.fallback),
+        strategy: QuestionSplitStrategy.fallback,
+      );
+    }
+
     final paragraphSegments = normalized
         .split(RegExp(r'\n\s*\n+'))
         .map((segment) => segment.trim())
@@ -174,10 +192,10 @@ class QuestionSplitService {
   }
 
   List<String> _splitByNumberedQuestions(String text) {
-    final matches =
-        RegExp(r'(^|\n)\s*(?:第\s*\d+\s*题|\d+[\.、．)])\s*', multiLine: true)
-            .allMatches(text)
-            .toList();
+    final matches = RegExp(
+      r'(^|\n)\s*(?:第\s*\d+\s*题|\d+(?:[、．)]|\.(?!\d)))\s*',
+      multiLine: true,
+    ).allMatches(text).toList();
     if (matches.length < 2) return const <String>[];
 
     final segments = <String>[];

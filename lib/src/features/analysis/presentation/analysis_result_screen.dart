@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wrong_notebook/src/app/providers.dart';
+import 'package:smart_wrong_notebook/src/data/services/question_analysis_coordinator.dart';
 import 'package:smart_wrong_notebook/src/domain/models/analysis_result.dart';
 import 'package:smart_wrong_notebook/src/domain/models/mastery_level.dart';
 import 'package:smart_wrong_notebook/src/domain/models/question_record.dart';
@@ -23,7 +24,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final record = ref.watch(currentQuestionProvider);
+    final selectedRecord = ref.watch(currentQuestionProvider);
+    final backgroundTasks =
+        ref.watch(backgroundAnalysisTasksProvider).valueOrNull ??
+            const <QuestionAnalysisTaskSnapshot>[];
+    final record = _latestTaskResultFor(
+      selectedRecord,
+      backgroundTasks,
+    );
 
     if (record == null) {
       return Scaffold(
@@ -63,9 +71,9 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     final displayQuestionText = activeCandidateAnalysis?.questionText ??
         activeCandidate?.text ??
         record.correctedText;
-    final displayExercises = hasMultipleCandidates
-        ? activeCandidateAnalysis?.savedExercises ?? const []
-        : record.savedExercises;
+    final hasRetryingCandidate = record.candidateAnalyses.any((candidate) =>
+        candidate.status == CandidateAnalysisStatus.queued ||
+        candidate.status == CandidateAnalysisStatus.running);
     final candidateInsight = hasMultipleCandidates
         ? _candidateInsight(
             candidateOrder: activeCandidate?.order ?? 1,
@@ -80,7 +88,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
         title: const Text('AI 解析结果'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.chevron_left),
-          onPressed: () => context.go('/capture/save-confirmation'),
+          onPressed: () => context.go('/'),
         ),
       ),
       body: ListView(
@@ -208,6 +216,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             const SizedBox(height: 12),
             _CandidateSwitcherCard(
               splitResult: splitResult!,
+              candidateAnalyses: record.candidateAnalyses,
               safeCandidateIndex: safeCandidateIndex,
               onSelected: (index) =>
                   setState(() => _activeCandidateIndex = index),
@@ -220,12 +229,11 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
               iconColor: const Color(0xFFDC2626),
               bg: const Color(0xFFFEF2F2),
               border: const Color(0xFFFECACA),
-              title: '第 ${activeCandidate?.order ?? 1}题解析失败',
+              title: _candidateFailureTitle(activeCandidateAnalysis,
+                  order: activeCandidate?.order ?? 1),
               titleColor: const Color(0xFFB91C1C),
               contentWidget: MathContentView(
-                activeCandidateAnalysis?.errorMessage?.isNotEmpty == true
-                    ? '已自动重试，仍未成功。该题暂不可保存，可返回重新解析。\n${activeCandidateAnalysis!.errorMessage}'
-                    : '已自动重试，仍未成功。该题暂不可保存，可返回重新解析。',
+                _candidateFailureMessage(activeCandidateAnalysis),
                 style: TextStyle(
                   fontSize: 14,
                   color:
@@ -234,6 +242,28 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                 ),
               ),
             ),
+            if (hasMultipleCandidates &&
+                activeCandidateAnalysis != null) ...<Widget>[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: activeCandidateAnalysis.status ==
+                              CandidateAnalysisStatus.failed &&
+                          activeCandidate != null
+                      ? () => _retryCandidate(
+                            record,
+                            activeCandidateAnalysis,
+                          )
+                      : null,
+                  icon: Icon(_candidateRetryIcon(activeCandidateAnalysis)),
+                  label: Text(_candidateRetryLabel(
+                    activeCandidateAnalysis,
+                    activeCandidate?.order ?? 1,
+                  )),
+                ),
+              ),
+            ],
           ],
           if (displayResult != null) ...<Widget>[
             const SizedBox(height: 20),
@@ -355,6 +385,21 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                     const SizedBox(height: 10),
                     _ConsistencyNotice(
                       notice: _consistencyNotice(displayResult)!,
+                    ),
+                  ],
+                  if (_shouldOfferQuestionCorrection(
+                    displayResult,
+                    hasMultipleCandidates: hasMultipleCandidates,
+                  )) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            context.go('/analysis/text-correction'),
+                        icon: const Icon(CupertinoIcons.pencil, size: 17),
+                        label: const Text('核对题干后重新解析'),
+                      ),
                     ),
                   ],
                 ],
@@ -528,151 +573,34 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                     ),
                   )),
             ],
-            // Exercises
-            if (displayExercises.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Text('举一反三',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  Text('${displayExercises.length} 题',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant)),
-                ],
-              ),
-              if (activeCandidate != null) ...<Widget>[
-                const SizedBox(height: 6),
-                Text(
-                  activeCandidateAnalysis != null
-                      ? '当前展示第 ${activeCandidate.order} 题独立生成的练习。'
-                      : '第 ${activeCandidate.order} 题暂无独立练习。',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-              ],
-              const SizedBox(height: 10),
-              ...displayExercises.map((e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color:
-                                Theme.of(context).colorScheme.outlineVariant),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _difficultyColor(context, e.difficulty)
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  e.difficulty,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color:
-                                        _difficultyColor(context, e.difficulty),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              if (e.isCorrect == true)
-                                const Icon(CupertinoIcons.checkmark_circle,
-                                    color: Color(0xFF16A34A), size: 18)
-                              else if (e.isCorrect == false)
-                                const Icon(CupertinoIcons.xmark_circle,
-                                    color: Color(0xFFEA580C), size: 18),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          MathContentView(
-                            e.question,
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: <Widget>[
-                              Icon(CupertinoIcons.lightbulb,
-                                  size: 14,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant
-                                      .withValues(alpha: 0.65)),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: MathContentView(
-                                  '答案：${e.answer}',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (e.explanation.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 4),
-                            MathContentView(
-                              e.explanation,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  )),
-            ],
             const SizedBox(height: 24),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () =>
-                        _startPractice(record, activeCandidateAnalysis),
-                    child: const Text('开始练习'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () async {
-                      final splitter = ref.read(questionSplitServiceProvider);
-                      ref
-                          .read(currentQuestionSplitSessionProvider.notifier)
-                          .state = await buildQuestionSplitSession(
-                        record,
-                        splitter: splitter,
-                      );
-                      if (!context.mounted) return;
-                      context.go('/capture/split-confirmation');
-                    },
-                    child: const Text('保存到错题本'),
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: hasRetryingCandidate
+                    ? null
+                    : () async {
+                        final splitter = ref.read(questionSplitServiceProvider);
+                        ref
+                            .read(currentQuestionSplitSessionProvider.notifier)
+                            .state = await buildQuestionSplitSession(
+                          record,
+                          splitter: splitter,
+                        );
+                        if (!context.mounted) return;
+                        context.go('/capture/split-confirmation');
+                      },
+                child: Text(hasRetryingCandidate ? '有题正在重新解析' : '保存到错题本'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _discardResult(record),
+                icon: const Icon(CupertinoIcons.delete, size: 18),
+                label: const Text('放弃本次结果'),
+              ),
             ),
           ],
         ],
@@ -680,18 +608,164 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     );
   }
 
-  void _startPractice(
-    QuestionRecord record,
-    CandidateAnalysisSnapshot? activeCandidateAnalysis,
-  ) {
-    ref.read(currentPracticeContextProvider.notifier).state = PracticeContext(
-      source: PracticeContextSource.analysis,
-      candidateId: activeCandidateAnalysis?.candidateId,
-      candidateOrder: activeCandidateAnalysis?.order,
-      returnRoute: '/analysis/result',
+  Future<void> _discardResult(QuestionRecord record) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('放弃本次结果'),
+        content: const Text('确定放弃这次解析结果吗？此操作不可恢复。'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('放弃'),
+          ),
+        ],
+      ),
     );
-    ref.read(currentQuestionProvider.notifier).state = record;
-    context.go('/exercise/practice');
+    if (confirmed != true) return;
+    try {
+      await ref.read(scanTaskLifecycleServiceProvider).discard(record);
+      ref.read(currentQuestionProvider.notifier).state = null;
+      ref.read(currentQuestionSplitSessionProvider.notifier).state = null;
+      ref.invalidate(scanTaskCountProvider);
+      if (mounted) context.go('/');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('放弃失败：$error')),
+      );
+    }
+  }
+
+  QuestionRecord? _latestTaskResultFor(
+    QuestionRecord? selected,
+    List<QuestionAnalysisTaskSnapshot> tasks,
+  ) {
+    if (selected == null) return null;
+    for (final task in tasks) {
+      if (task.handle.parentQuestionId != selected.id) continue;
+      final result = task.resultQuestion;
+      if (result != null) return result;
+    }
+    return selected;
+  }
+
+  String _candidateFailureTitle(
+    CandidateAnalysisSnapshot? candidate, {
+    required int order,
+  }) {
+    return switch (candidate?.status) {
+      CandidateAnalysisStatus.queued => '第 $order 题排队中',
+      CandidateAnalysisStatus.running => '正在重新解析第 $order 题',
+      _ => '第 $order 题解析失败',
+    };
+  }
+
+  String _candidateFailureMessage(CandidateAnalysisSnapshot? candidate) {
+    return switch (candidate?.status) {
+      CandidateAnalysisStatus.queued => '已加入解析队列，完成后会补全到当前结果。',
+      CandidateAnalysisStatus.running => '正在重新解析本题，完成后会补全到当前结果。',
+      _ => candidate?.errorMessage?.isNotEmpty == true
+          ? '已自动重试，仍未成功。该题暂不可保存，可单独重试。\n${candidate!.errorMessage}'
+          : '已自动重试，仍未成功。该题暂不可保存，可单独重试。',
+    };
+  }
+
+  IconData _candidateRetryIcon(CandidateAnalysisSnapshot candidate) {
+    return switch (candidate.status) {
+      CandidateAnalysisStatus.queued => CupertinoIcons.clock,
+      CandidateAnalysisStatus.running => CupertinoIcons.arrow_clockwise,
+      CandidateAnalysisStatus.success => CupertinoIcons.checkmark,
+      CandidateAnalysisStatus.failed => CupertinoIcons.refresh,
+    };
+  }
+
+  String _candidateRetryLabel(
+    CandidateAnalysisSnapshot candidate,
+    int order,
+  ) {
+    return switch (candidate.status) {
+      CandidateAnalysisStatus.queued => '第 $order 题排队中',
+      CandidateAnalysisStatus.running => '正在重新解析第 $order 题',
+      CandidateAnalysisStatus.success => '第 $order 题已解析',
+      CandidateAnalysisStatus.failed => '重试第 $order 题',
+    };
+  }
+
+  Future<void> _retryCandidate(
+    QuestionRecord source,
+    CandidateAnalysisSnapshot candidate,
+  ) async {
+    final coordinator = ref.read(questionAnalysisCoordinatorProvider);
+    final CandidateAnalysisRetryCoordinator? retryCoordinator =
+        coordinator is CandidateAnalysisRetryCoordinator
+            ? coordinator as CandidateAnalysisRetryCoordinator
+            : null;
+    if (retryCoordinator == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('当前解析任务不支持单题重试，请返回首页重新解析。')),
+      );
+      return;
+    }
+    try {
+      final queued = await retryCoordinator.retryCandidate(source, candidate);
+      if (!mounted) return;
+      if (queued) {
+        ref.read(currentQuestionProvider.notifier).state =
+            _withQueuedCandidate(source, candidate.candidateId);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            queued
+                ? '已加入队列，将只重新解析第 ${candidate.order} 题'
+                : '第 ${candidate.order} 题已在解析队列中',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('重新解析失败：$error')),
+      );
+    }
+  }
+
+  QuestionRecord _withQueuedCandidate(
+    QuestionRecord source,
+    String candidateId,
+  ) {
+    return source.copyWith(
+      candidateAnalyses: source.candidateAnalyses.map((candidate) {
+        if (candidate.candidateId != candidateId) return candidate;
+        return CandidateAnalysisSnapshot(
+          candidateId: candidate.candidateId,
+          order: candidate.order,
+          questionText: candidate.questionText,
+          analysisResult: candidate.analysisResult,
+          savedExercises: candidate.savedExercises,
+          subject: candidate.subject,
+          aiTags: candidate.aiTags,
+          aiKnowledgePoints: candidate.aiKnowledgePoints,
+          status: CandidateAnalysisStatus.queued,
+        );
+      }).toList(growable: false),
+    );
+  }
+
+  bool _shouldOfferQuestionCorrection(
+    AnalysisResult result, {
+    required bool hasMultipleCandidates,
+  }) {
+    if (hasMultipleCandidates) return false;
+    return result.visualAssumptionStatus ==
+            VisualAssumptionStatus.needsReview ||
+        result.consistencyStatus == AnalysisConsistencyStatus.needsReview;
   }
 
   String _candidateInsight({
@@ -712,24 +786,6 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
         return '分段拆题';
       default:
         return '单题回退';
-    }
-  }
-
-  Color _difficultyColor(BuildContext context, String difficulty) {
-    final colorScheme = Theme.of(context).colorScheme;
-    switch (difficulty) {
-      case '简单':
-        return const Color(0xFF16A34A);
-      case '中等':
-        return const Color(0xFFD97706);
-      case '困难':
-        return const Color(0xFFDC2626);
-      case '提高':
-        return const Color(0xFF7C3AED);
-      case '同级':
-        return const Color(0xFF2563EB);
-      default:
-        return colorScheme.onSurfaceVariant;
     }
   }
 
@@ -811,11 +867,13 @@ extension _IterableFirstOrNullExtension<E> on Iterable<E> {
 class _CandidateSwitcherCard extends StatelessWidget {
   const _CandidateSwitcherCard({
     required this.splitResult,
+    required this.candidateAnalyses,
     required this.safeCandidateIndex,
     required this.onSelected,
   });
 
   final QuestionSplitResult splitResult;
+  final List<CandidateAnalysisSnapshot> candidateAnalyses;
   final int safeCandidateIndex;
   final void Function(int index) onSelected;
 
@@ -863,6 +921,16 @@ class _CandidateSwitcherCard extends StatelessWidget {
               children: splitResult.candidates.asMap().entries.map((entry) {
                 final candidate = entry.value;
                 final isActive = entry.key == safeCandidateIndex;
+                final analysis = candidateAnalyses.firstWhereOrNull(
+                  (item) => item.candidateId == candidate.id,
+                );
+                final statusColor = switch (analysis?.status) {
+                  CandidateAnalysisStatus.failed => colorScheme.error,
+                  CandidateAnalysisStatus.queued ||
+                  CandidateAnalysisStatus.running =>
+                    const Color(0xFFD97706),
+                  _ => colorScheme.onSurfaceVariant,
+                };
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
@@ -871,9 +939,7 @@ class _CandidateSwitcherCard extends StatelessWidget {
                     onSelected: (_) => onSelected(entry.key),
                     labelStyle: TextStyle(
                       fontSize: 14,
-                      color: isActive
-                          ? colorScheme.onPrimary
-                          : colorScheme.onSurfaceVariant,
+                      color: isActive ? colorScheme.onPrimary : statusColor,
                       fontWeight: FontWeight.w500,
                     ),
                     selectedColor: colorScheme.primary,
