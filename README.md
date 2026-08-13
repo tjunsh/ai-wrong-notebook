@@ -140,9 +140,9 @@ flutter test
 
 <a href="https://www.star-history.com/?repos=tjunsh%2Fai-wrong-notebook&type=date&legend=bottom-right">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&theme=dark&legend=bottom-right&sealed_token=KDfa2h6bUXcCadImEO8vHVPGcCJ_pYYRhg9RyoYvNz1OBuKyl2n53kGB3jWQVU7xd52vpbefDpATCgJkYjEEjkjdEnj7nxX4UnHtYIs5-pYfsumMWIq3K_zg3IgPfZ41IQlTEdETGSgAko3SrO2akGkBalQTyWhwOxsWpAy10shTEbF0AxUOXW389KWh" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&legend=bottom-right&sealed_token=KDfa2h6bUXcCadImEO8vHVPGcCJ_pYYRhg9RyoYvNz1OBuKyl2n53kGB3jWQVU7xd52vpbefDpATCgJkYjEEjkjdEnj7nxX4UnHtYIs5-pYfsumMWIq3K_zg3IgPfZ41IQlTEdETGSgAko3SrO2akGkBalQTyWhwOxsWpAy10shTEbF0AxUOXW389KWh" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&legend=bottom-right&sealed_token=KDfa2h6bUXcCadImEO8vHVPGcCJ_pYYRhg9RyoYvNz1OBuKyl2n53kGB3jWQVU7xd52vpbefDpATCgJkYjEEjkjdEnj7nxX4UnHtYIs5-pYfsumMWIq3K_zg3IgPfZ41IQlTEdETGSgAko3SrO2akGkBalQTyWhwOxsWpAy10shTEbF0AxUOXW389KWh" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&theme=dark&legend=bottom-right&sealed_token=2lVYUUSKE8Xg32kBXKLor7LPPEricQqczyw-61c4TjLwI8lSK_eOk3jD3MovEhuEyaOv9ZBIaBDZ4X0hXwNB2UXtGtPHBEm8mYBD6xHGCIS7kpQPTB8IP0WvStcKiTnEEVL1PdpOZruKI84VrOxGmXsb8LVwYgmLeP9E6x6kqj8WD6AI7fd2OBc2BAjW" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&legend=bottom-right&sealed_token=2lVYUUSKE8Xg32kBXKLor7LPPEricQqczyw-61c4TjLwI8lSK_eOk3jD3MovEhuEyaOv9ZBIaBDZ4X0hXwNB2UXtGtPHBEm8mYBD6xHGCIS7kpQPTB8IP0WvStcKiTnEEVL1PdpOZruKI84VrOxGmXsb8LVwYgmLeP9E6x6kqj8WD6AI7fd2OBc2BAjW" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=tjunsh/ai-wrong-notebook&type=date&legend=bottom-right&sealed_token=2lVYUUSKE8Xg32kBXKLor7LPPEricQqczyw-61c4TjLwI8lSK_eOk3jD3MovEhuEyaOv9ZBIaBDZ4X0hXwNB2UXtGtPHBEm8mYBD6xHGCIS7kpQPTB8IP0WvStcKiTnEEVL1PdpOZruKI84VrOxGmXsb8LVwYgmLeP9E6x6kqj8WD6AI7fd2OBc2BAjW" />
  </picture>
 </a>
 
