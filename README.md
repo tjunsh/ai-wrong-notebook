@@ -146,6 +146,12 @@ flutter test
  </picture>
 </a>
 
+## 赞赏支持
+
+如果这个工具帮到了你，欢迎请作者喝杯咖啡。
+
+[在爱发电赞赏](https://afdian.com/a/tjunsh)
+
 ## License
 
 MIT
