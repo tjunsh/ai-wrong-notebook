@@ -150,7 +150,7 @@ flutter test
 
 如果这个工具帮到了你，欢迎请作者喝杯咖啡。
 
-[在爱发电赞赏](https://afdian.com/a/tjunsh)
+<a href="https://afdian.com/a/tjunsh" target="_blank" rel="noopener noreferrer">在爱发电赞赏</a>
 
 ## License
 
