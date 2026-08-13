@@ -152,6 +152,8 @@ flutter test
 
 [在爱发电赞赏](https://afdian.com/a/tjunsh)
 
+开发不易，目标筹款99刀，就可以注册一个iOS开发者账号了～
+
 ## License
 
 MIT
