@@ -2,6 +2,24 @@
 
 一款面向学生的智能错题管理应用，把拍题、解析、保存、追问和练习串成完整学习闭环。
 
+<p align="center">
+  <a href="https://github.com/tjunsh/ai-wrong-notebook/actions/workflows/ci.yml">
+    <img src="https://github.com/tjunsh/ai-wrong-notebook/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status" />
+  </a>
+  <a href="https://github.com/tjunsh/ai-wrong-notebook/actions/workflows/release.yml">
+    <img src="https://github.com/tjunsh/ai-wrong-notebook/actions/workflows/release.yml/badge.svg" alt="Release status" />
+  </a>
+  <a href="https://github.com/tjunsh/ai-wrong-notebook/releases/latest">
+    <img src="https://img.shields.io/github/v/release/tjunsh/ai-wrong-notebook?display_name=tag&sort=semver" alt="Latest release" />
+  </a>
+  <img src="https://img.shields.io/badge/platform-Android-3ddc84?logo=android&logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white" alt="Dart" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-3da639" alt="MIT License" />
+  </a>
+</p>
+
 ## 功能特性
 
 ### 核心功能
